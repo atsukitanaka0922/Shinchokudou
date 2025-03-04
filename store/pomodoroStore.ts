@@ -25,8 +25,8 @@ export const usePomodoroStore = create<PomodoroState>((set) => ({
       if (state.timeLeft > 1) {
         return { timeLeft: state.timeLeft - 1 };
       } else {
-        useTaskStore.getState().toggleTask(state.activeTaskId!); // タスク完了
-        useStatsStore.getState().incrementPomodoro(); // ポモドーロ回数を更新
+        useTaskStore.getState().toggleTask(String(state.activeTaskId!)); // ここを修正
+        useStatsStore.getState().incrementPomodoro();
         return { timeLeft: 0, isRunning: false, activeTaskId: null };
       }
     }),
