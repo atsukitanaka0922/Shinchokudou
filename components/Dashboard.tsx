@@ -12,18 +12,13 @@ export default function Dashboard() {
   const [weather, setWeather] = useState({ temp: 0, weather: "" });
 
   useEffect(() => {
-    fetchCalendarEvents().then((data: any[]) => {
+    fetchCalendarEvents().then((data: Event[]) => {
       if (!Array.isArray(data)) {
         console.error("Unexpected response format:", data);
-        setEvents([]); // 応急処置: 空の配列をセット
+        setEvents([]);
         return;
       }
-      setEvents(
-        data.map((event) => ({
-          id: event.id || Math.random().toString(), // ID がない場合は仮の値をセット
-          summary: event.summary || "予定なし",
-        }))
-      );
+      setEvents(data);
     });
 
     fetchWeather().then(setWeather);
