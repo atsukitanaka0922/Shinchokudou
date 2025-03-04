@@ -12,10 +12,15 @@ export default function Dashboard() {
   const [weather, setWeather] = useState({ temp: 0, weather: "" });
 
   useEffect(() => {
-    fetchCalendarEvents().then((data) => {
+    fetchCalendarEvents().then((data: any[]) => {
+      if (!Array.isArray(data)) {
+        console.error("Unexpected response format:", data);
+        setEvents([]); // 応急処置: 空の配列をセット
+        return;
+      }
       setEvents(
-        data.map((event: any) => ({
-          id: event.id || Math.random().toString(), // ID がない場合は仮の値を設定
+        data.map((event) => ({
+          id: event.id || Math.random().toString(), // ID がない場合は仮の値をセット
           summary: event.summary || "予定なし",
         }))
       );
@@ -27,11 +32,15 @@ export default function Dashboard() {
   return (
     <div className="p-4 bg-blue-100 rounded-lg shadow-md">
       <h2 className="text-lg font-semibold">📅 今日の予定</h2>
-      <ul>
-        {events.map((event) => (
-          <li key={event.id}>{event.summary}</li>
-        ))}
-      </ul>
+      {events.length === 0 ? (
+        <p className="text-gray-500">予定はありません</p>
+      ) : (
+        <ul>
+          {events.map((event) => (
+            <li key={event.id}>{event.summary}</li>
+          ))}
+        </ul>
+      )}
 
       <h2 className="text-lg font-semibold mt-4">🌤 今日の天気</h2>
       <p>{weather.temp}°C - {weather.weather}</p>
