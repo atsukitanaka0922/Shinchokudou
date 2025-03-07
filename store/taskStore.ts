@@ -7,7 +7,7 @@ type Task = {
   text: string;
   completed: boolean;
   order: number;
-  deadline?: string; // 締め切り日
+  deadline?: string;
 };
 
 type TaskState = {
@@ -38,18 +38,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     });
   },
 
-  // タスクを追加（締め切り日を設定可能）
+  // タスクを追加（Firestore のみ更新し、set() はしない）
   addTask: async (text, deadline) => {
-    const newTaskRef = await addDoc(collection(db, "tasks"), {
+    await addDoc(collection(db, "tasks"), {
       text,
       completed: false,
       order: Date.now(),
       deadline: deadline || null,
     });
-
-    set((state) => ({
-      tasks: [...state.tasks, { id: newTaskRef.id, text, completed: false, order: Date.now(), deadline }],
-    }));
   },
 
   // タスクを削除
@@ -62,9 +58,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   // タスク完了
   completeTask: async (taskId) => {
-    const task = get().tasks.find((t) => t.id === taskId);
-    if (!task) return;
-
     await updateDoc(doc(db, "tasks", taskId), { completed: true });
 
     const messages = [
@@ -78,17 +71,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     new Audio("/sounds/task-complete.mp3").play();
 
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, completed: true } : t)),
-      message: randomMessage,
-    }));
+    set({ message: randomMessage });
 
     setTimeout(() => set({ message: null }), 3000);
   },
 
   // タスクを上に移動
   moveTaskUp: async (index) => {
-    if (index === 0) return; // 先頭なら何もしない
+    if (index === 0) return;
 
     const tasks = [...get().tasks];
     [tasks[index], tasks[index - 1]] = [tasks[index - 1], tasks[index]];
@@ -105,7 +95,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   // タスクを下に移動
   moveTaskDown: async (index) => {
     const tasks = [...get().tasks];
-    if (index === tasks.length - 1) return; // 最後なら何もしない
+    if (index === tasks.length - 1) return;
 
     [tasks[index], tasks[index + 1]] = [tasks[index + 1], tasks[index]];
 
