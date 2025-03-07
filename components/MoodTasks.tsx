@@ -1,32 +1,79 @@
-import { useMoodStore } from "@/store/moodStore";
-import { useTaskStore } from "@/store/taskStore";
+import { create } from "zustand";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  query,
+  orderBy,
+  onSnapshot,
+} from "firebase/firestore";
 
-const moodTaskSuggestions = {
-  "元気": ["ランニング", "掃除", "新しいスキルを学ぶ"],
-  "普通": ["読書", "買い物", "映画を見る"],
-  "疲れた": ["瞑想", "音楽を聴く", "昼寝"],
+type Task = {
+  id: string;
+  text: string;
+  completed: boolean;
+  order: number;
 };
 
-export default function MoodTasks() {
-  const { mood } = useMoodStore();
-  const { addTask } = useTaskStore();
-  
-  return (
-    <div className="p-4 bg-green-100 rounded-lg shadow-md">
-      <h2 className="text-lg font-semibold">🎯 おすすめタスク</h2>
-      <ul className="list-disc pl-5">
-        {moodTaskSuggestions[mood].map((task, index) => (
-          <li key={index} className="flex justify-between items-center">
-            {task}
-            <button
-              onClick={() => addTask(task)}
-              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded-lg text-sm"
-            >
-              ＋
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+type TaskState = {
+  tasks: Task[];
+  addTask: (text: string) => void;
+  removeTask: (taskId: string) => void;
+  toggleTask: (taskId: string) => void;
+  reorderTasks: (sourceIndex: number, destinationIndex: number) => void;
+  loadTasks: () => void;
+};
+
+export const useTaskStore = create<TaskState>((set, get) => ({
+  tasks: [],
+
+  // Firestore からタスクを取得
+  loadTasks: () => {
+    const q = query(collection(db, "tasks"), orderBy("order"));
+    onSnapshot(q, (querySnapshot) => {
+      const tasks = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Task[];
+      set({ tasks });
+    });
+  },
+
+  // タスクを追加
+  addTask: async (text) => {
+    await addDoc(collection(db, "tasks"), {
+      text,
+      completed: false,
+      order: Date.now(), // Firestore の並び順が正しく反映されるようにタイムスタンプを使用
+    });
+  },
+
+  // タスクを削除
+  removeTask: async (taskId) => {
+    await deleteDoc(doc(db, "tasks", taskId));
+  },
+
+  // タスクの完了状態を切り替え
+  toggleTask: async (taskId) => {
+    const taskRef = doc(db, "tasks", taskId);
+    await updateDoc(taskRef, { completed: true });
+  },
+
+  // タスクの順番を変更
+  reorderTasks: async (sourceIndex, destinationIndex) => {
+    const tasks = [...get().tasks];
+    const [movedTask] = tasks.splice(sourceIndex, 1);
+    tasks.splice(destinationIndex, 0, movedTask);
+
+    // Firestore の順番を更新
+    for (let i = 0; i < tasks.length; i++) {
+      const taskRef = doc(db, "tasks", tasks[i].id);
+      await updateDoc(taskRef, { order: i });
+    }
+
+    set({ tasks });
+  },
+}));

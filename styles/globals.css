@@ -2,22 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* グローバル変数 */
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-/* 全体のスタイル */
+/* 全体の背景色とテキスト設定 */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply text-gray-900 dark:text-gray-100 transition-colors;
+  font-family: "Inter", sans-serif;
+}
+
+/* Tailwind のコンテナクラスを適用 */
+.container {
+  @apply max-w-4xl mx-auto p-6;
+}
+
+/* ページ全体の背景色を適用 */
+html, body {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* スクロールバーのカスタマイズ（PC向け） */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* PC向けのグリッドレイアウト */
+@media (min-width: 768px) {
+  .grid-layout {
+    @apply grid grid-cols-1 gap-6;
+  }
+
+  .content-box {
+    @apply bg-white p-6 rounded-lg shadow-lg;
+  }
 }

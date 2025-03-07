@@ -1,33 +1,48 @@
 import { create } from "zustand";
-import { useTaskStore } from "./taskStore";
-import { useStatsStore } from "./statsStore";
 
 type PomodoroState = {
-  activeTaskId: number | null;
-  timeLeft: number;
+  taskId: string | null;
   isRunning: boolean;
-  startTimer: (taskId: number) => void;
-  stopTimer: () => void;
-  resetTimer: () => void;
+  timeLeft: number;
+  isBreak: boolean;
+  pomodoroCount: number;
+  isVisible: boolean;
+  startPomodoro: (taskId: string) => void;
+  stopPomodoro: () => void;
   tick: () => void;
 };
 
 export const usePomodoroStore = create<PomodoroState>((set) => ({
-  activeTaskId: null,
-  timeLeft: 25 * 60, // 25分
+  taskId: null,
   isRunning: false,
-  startTimer: (taskId) =>
-    set(() => ({ activeTaskId: taskId, timeLeft: 25 * 60, isRunning: true })),
-  stopTimer: () => set(() => ({ isRunning: false })),
-  resetTimer: () => set(() => ({ activeTaskId: null, timeLeft: 25 * 60, isRunning: false })),
+  timeLeft: 25 * 60, // 25分
+  isBreak: false, // 作業 or 休憩
+  pomodoroCount: 0, // ポモドーロ回数
+  isVisible: false, // タイマーの表示状態
+
+  startPomodoro: (taskId) =>
+    set({ taskId, isRunning: true, timeLeft: 25 * 60, isBreak: false, isVisible: true }),
+
+  stopPomodoro: () =>
+    set({ taskId: null, isRunning: false, isBreak: false, isVisible: false }),
+
   tick: () =>
     set((state) => {
-      if (state.timeLeft > 1) {
+      if (state.timeLeft > 0) {
         return { timeLeft: state.timeLeft - 1 };
       } else {
-        useTaskStore.getState().toggleTask(String(state.activeTaskId!)); // ここを修正
-        useStatsStore.getState().incrementPomodoro();
-        return { timeLeft: 0, isRunning: false, activeTaskId: null };
+        if (state.isBreak) {
+          // 休憩終了 → 新しいポモドーロ開始
+          return { timeLeft: 25 * 60, isBreak: false, isRunning: true };
+        } else {
+          // 作業終了 → 休憩開始
+          return {
+            timeLeft: 5 * 60,
+            isBreak: true,
+            isRunning: true,
+            pomodoroCount: state.pomodoroCount + 1, // ポモドーロ回数カウント
+          };
+        }
       }
     }),
 }));
