@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { fetchCalendarEvents } from "@/lib/googleCalendar";
-import { fetchWeather } from "@/lib/weather";
 
 type Event = {
   id: string;
@@ -20,8 +19,6 @@ export default function Dashboard() {
       }
       setEvents(data);
     });
-
-    fetchWeather().then(setWeather);
   }, []);
 
   return (
@@ -36,9 +33,6 @@ export default function Dashboard() {
           ))}
         </ul>
       )}
-
-      <h2 className="text-lg font-semibold mt-4">🌤 今日の天気</h2>
-      <p>{weather.temp}°C - {weather.weather}</p>
     </div>
   );
 }

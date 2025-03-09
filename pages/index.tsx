@@ -7,12 +7,13 @@ import AddTask from "@/components/AddTask";
 import TaskList from "@/components/TaskList";
 import PomodoroTimer from "@/components/PomodoroTimer";
 import Dashboard from "@/components/Dashboard";
-import MoodSelector from "@/components/MoodSelector";
 import Feedback from "@/components/Feedback";
 import TaskStats from "@/components/TaskStats";
 import PomodoroStats from "@/components/PomodoroStats";
 import BackgroundColorPicker from "@/components/BackgroundColorPicker";
 import TaskSuggestions from "@/components/TaskSuggestions";
+import BGMPlayer from "@/components/BGMPlayer";
+import Weather from "@/components/Weather";
 
 export default function Home() {
   const { loadTasks } = useTaskStore();
@@ -38,6 +39,7 @@ export default function Home() {
         <div className="container mx-auto p-4">
           <motion.h1 className="text-2xl font-bold text-center mb-4">
           </motion.h1>
+          <BGMPlayer />
           <Dashboard />
           <TaskSuggestions />
           <TaskStats />
@@ -49,7 +51,9 @@ export default function Home() {
       ) : (
         <div className="max-w-4xl mx-auto grid grid-cols-1 gap-6 p-6 bg-white shadow-lg rounded-lg">
           <motion.div className="p-6 rounded-lg shadow-lg">
+            <BGMPlayer />
             <Dashboard />
+            <Weather />
             <TaskStats />
           </motion.div>
 

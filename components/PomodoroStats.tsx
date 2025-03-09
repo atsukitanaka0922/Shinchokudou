@@ -1,12 +1,19 @@
-import { usePomodoroStore } from "@/store/pomodoroStore";
+import { useEffect } from "react";
+import { useStatsStore } from "@/store/statsStore";
 
 export default function PomodoroStats() {
-  const { pomodoroCount } = usePomodoroStore();
+  const { stats, loadStats } = useStatsStore();
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  if (!stats) return <p className="text-gray-600">📡 データ取得中...</p>;
 
   return (
-    <div className="p-4 rounded-lg shadow-md bg-white">
-      <h2 className="text-lg font-semibold mb-2">📊 ポモドーロ統計</h2>
-      <p className="text-xl font-bold">{pomodoroCount} 回</p>
+    <div className="p-4 rounded-lg shadow-md bg-yellow-100">
+      <h2 className="text-lg font-semibold">📊 今日のポモドーロ統計</h2>
+      <p className="text-md">✅ 完了したポモドーロ: {stats.completedSessions}</p>
     </div>
   );
 }

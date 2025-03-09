@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { usePomodoroStore } from "@/store/pomodoroStore";
 import { useTaskStore } from "@/store/taskStore";
+import { useStatsStore } from "@/store/statsStore"; // 🔥 ポモドーロ統計を取得
 
 export default function PomodoroTimer() {
   const { taskId, isRunning, timeLeft, isBreak, isVisible, stopPomodoro, tick } = usePomodoroStore();
   const { tasks } = useTaskStore();
+  const { incrementPomodoro } = useStatsStore(); // 🔥 ポモドーロ統計の更新関数
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -19,11 +21,13 @@ export default function PomodoroTimer() {
   useEffect(() => {
     if (timeLeft === 0) {
       let audio: HTMLAudioElement;
-      
+
       if (isBreak) {
-        audio = new Audio("/sounds/break-end.mp3"); // 休憩終了音
+        audio = new Audio("/sounds/pomodoro-end.mp3"); // 休憩終了音
       } else {
         audio = new Audio("/sounds/pomodoro-end.mp3"); // 作業終了音
+        console.log("✅ 作業時間終了！`incrementPomodoro()` を実行します。");
+        incrementPomodoro(); // 🔥 Firestore に完了回数を記録
       }
 
       audio.play();
@@ -34,7 +38,7 @@ export default function PomodoroTimer() {
         audio.currentTime = 0;
       }, 5000);
     }
-  }, [timeLeft, isBreak]);
+  }, [timeLeft, isBreak, incrementPomodoro]); // 🔥 `incrementPomodoro` を依存関係に追加
 
   if (!isVisible) return null;
 
@@ -53,3 +57,4 @@ export default function PomodoroTimer() {
     </div>
   );
 }
+
