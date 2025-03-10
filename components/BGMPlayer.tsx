@@ -1,24 +1,27 @@
-import { useEffect, useRef, useState } from "react";
-import { Rnd } from "react-rnd"; // 🔥 react-rnd を使用
+import { useState, useEffect, useRef } from "react";
+import Draggable, { DraggableEvent, DraggableData } from "react-draggable"; // ✅ 型をインポート
 
 export default function BGMPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // 🔥 位置とサイズを `localStorage` に保存
-  const [position, setPosition] = useState({ x: 200, y: 200, width: 250, height: 150 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // BGM の状態を `localStorage` から取得
     const storedState = localStorage.getItem("bgmPlaying");
-    if (storedState === "true") setIsPlaying(true);
+    if (storedState === "true") {
+      setIsPlaying(true);
+    }
 
     const storedVolume = localStorage.getItem("bgmVolume");
-    if (storedVolume) setVolume(parseFloat(storedVolume));
+    if (storedVolume) {
+      setVolume(parseFloat(storedVolume));
+    }
 
-    const savedPosition = localStorage.getItem("bgmPlayerPosition");
-    if (savedPosition) setPosition(JSON.parse(savedPosition));
+    const storedPosition = localStorage.getItem("bgmPlayerPosition");
+    if (storedPosition) {
+      setPosition(JSON.parse(storedPosition));
+    }
   }, []);
 
   useEffect(() => {
@@ -33,7 +36,7 @@ export default function BGMPlayer() {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch((error) => console.error("Audio play error:", error));
+      audioRef.current.play().catch(error => console.error("Audio play error:", error));
     }
 
     setIsPlaying(!isPlaying);
@@ -50,37 +53,20 @@ export default function BGMPlayer() {
     }
   };
 
-  const handleDragStop = (e, d) => {
+  // ✅ 修正: `DraggableEvent` と `DraggableData` を型指定
+  const handleDragStop = (_e: DraggableEvent, d: DraggableData) => {
     const newPosition = { ...position, x: d.x, y: d.y };
     setPosition(newPosition);
     localStorage.setItem("bgmPlayerPosition", JSON.stringify(newPosition));
   };
 
   return (
-    <Rnd
-      size={{ width: position.width, height: position.height }}
-      position={{ x: position.x, y: position.y }}
-      onDragStop={handleDragStop}
-      bounds="parent"
-      enableResizing={{ right: true, bottom: true, bottomRight: true }}
-      onResizeStop={(e, direction, ref, delta, position) => {
-        const newSize = {
-          width: ref.offsetWidth,
-          height: ref.offsetHeight,
-          x: position.x,
-          y: position.y,
-        };
-        setPosition(newSize);
-        localStorage.setItem("bgmPlayerPosition", JSON.stringify(newSize));
-      }}
-    >
-      <div className="bg-white p-4 rounded-lg shadow-md cursor-move">
+    <Draggable position={position} onStop={handleDragStop}>
+      <div className="fixed bottom-4 left-4 bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-2">🎵 Vaporwave BGM</h2>
         <button
           onClick={toggleBGM}
-          className={`px-4 py-2 text-white rounded-lg ${
-            isPlaying ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"
-          }`}
+          className={`px-4 py-2 text-white rounded-lg ${isPlaying ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}`}
         >
           {isPlaying ? "⏸ 停止" : "▶ 再生"}
         </button>
@@ -98,9 +84,8 @@ export default function BGMPlayer() {
           />
         </div>
 
-        {/* オーディオ要素 (非表示) */}
         <audio ref={audioRef} src="https://radio.plaza.one/mp3" loop />
       </div>
-    </Rnd>
+    </Draggable>
   );
 }
