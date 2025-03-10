@@ -1,29 +1,22 @@
 import { useEffect, useState } from "react";
-import { Rnd } from "react-rnd"; // 🔥 react-rnd を使用
 import { usePomodoroStore } from "@/store/pomodoroStore";
 import { useTaskStore } from "@/store/taskStore";
 import { useStatsStore } from "@/store/statsStore";
+import Draggable, { DraggableEvent, DraggableData } from "react-draggable"; // ✅ 型をインポート
 
 export default function PomodoroTimer() {
   const { taskId, isRunning, timeLeft, isBreak, isVisible, stopPomodoro, tick } = usePomodoroStore();
   const { tasks } = useTaskStore();
   const { incrementPomodoro } = useStatsStore();
 
-  // 🔥 位置とサイズを `localStorage` で保存
-  const [position, setPosition] = useState({ x: 100, y: 100, width: 280, height: 180 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const savedPosition = localStorage.getItem("pomodoroTimerPosition");
-    if (savedPosition) {
-      setPosition(JSON.parse(savedPosition));
+    const storedPosition = localStorage.getItem("pomodoroTimerPosition");
+    if (storedPosition) {
+      setPosition(JSON.parse(storedPosition));
     }
   }, []);
-
-  const handleDragStop = (e, d) => {
-    const newPosition = { ...position, x: d.x, y: d.y };
-    setPosition(newPosition);
-    localStorage.setItem("pomodoroTimerPosition", JSON.stringify(newPosition));
-  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -37,14 +30,18 @@ export default function PomodoroTimer() {
 
   useEffect(() => {
     if (timeLeft === 0) {
-      let audio = new Audio("/sounds/pomodoro-end.mp3");
+      let audio: HTMLAudioElement;
 
-      if (!isBreak) {
+      if (isBreak) {
+        audio = new Audio("/sounds/pomodoro-end.mp3");
+      } else {
+        audio = new Audio("/sounds/pomodoro-end.mp3");
         console.log("✅ 作業時間終了！`incrementPomodoro()` を実行します。");
         incrementPomodoro();
       }
 
       audio.play();
+
       setTimeout(() => {
         audio.pause();
         audio.currentTime = 0;
@@ -52,29 +49,20 @@ export default function PomodoroTimer() {
     }
   }, [timeLeft, isBreak, incrementPomodoro]);
 
+  // ✅ 修正: `DraggableEvent` と `DraggableData` を型指定
+  const handleDragStop = (_e: DraggableEvent, d: DraggableData) => {
+    const newPosition = { x: d.x, y: d.y };
+    setPosition(newPosition);
+    localStorage.setItem("pomodoroTimerPosition", JSON.stringify(newPosition));
+  };
+
   if (!isVisible) return null;
 
   const task = tasks.find((t) => t.id === taskId);
 
   return (
-    <Rnd
-      size={{ width: position.width, height: position.height }}
-      position={{ x: position.x, y: position.y }}
-      onDragStop={handleDragStop}
-      bounds="parent"
-      enableResizing={{ right: true, bottom: true, bottomRight: true }}
-      onResizeStop={(e, direction, ref, delta, position) => {
-        const newSize = {
-          width: ref.offsetWidth,
-          height: ref.offsetHeight,
-          x: position.x,
-          y: position.y,
-        };
-        setPosition(newSize);
-        localStorage.setItem("pomodoroTimerPosition", JSON.stringify(newSize));
-      }}
-    >
-      <div className="bg-white p-6 rounded-lg shadow-lg text-center cursor-move">
+    <Draggable position={position} onStop={handleDragStop}>
+      <div className="fixed bottom-4 right-4 bg-white p-6 rounded-lg shadow-lg text-center">
         <h2 className="text-xl font-bold mb-4">{isBreak ? "☕ 休憩タイム" : "⏳ 作業タイム"}</h2>
         {task && !isBreak && <p className="text-lg font-semibold text-gray-700">📝 {task.text}</p>}
         <p className="text-4xl font-bold mb-4">
@@ -84,6 +72,6 @@ export default function PomodoroTimer() {
           ❌ 閉じる
         </button>
       </div>
-    </Rnd>
+    </Draggable>
   );
 }
