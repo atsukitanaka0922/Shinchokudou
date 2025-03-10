@@ -1,33 +1,69 @@
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/auth";
 import { useTaskStore } from "@/store/taskStore";
-import { usePomodoroStore } from "@/store/pomodoroStore";
 
 export default function TaskList() {
-  const { tasks, toggleCompleteTask, removeTask, moveTaskUp, moveTaskDown, setDeadline, message } = useTaskStore();
-  const { startPomodoro } = usePomodoroStore();
-  const today = new Date().toISOString().split("T")[0];
+  const { user } = useAuthStore();
+  const { tasks, toggleCompleteTask, removeTask, setDeadline, moveTaskUp, moveTaskDown, startPomodoro, clearTasks, loadTasks } = useTaskStore();
+
+  // 🔥 ユーザーがログアウトしたらタスクをリセット、ログインしたらタスクを再取得
+  useEffect(() => {
+    if (!user) {
+      clearTasks(); // ✅ ログアウト時にタスクをリセット
+    } else {
+      loadTasks(); // ✅ ログイン時にタスクを取得
+    }
+  }, [user]);
 
   return (
-    <div className="p-4 rounded-lg shadow-md bg-white">
-      {message && (
-        <div className="p-3 mb-3 text-center bg-green-100 text-green-700 rounded-lg">
-          {message}
-        </div>
-      )}
-
+    <div className="p-4 bg-white shadow-md rounded-lg">
+      <h2 className="text-lg font-bold mb-4">📝 タスク一覧</h2>
       <ul className="space-y-2">
-        {tasks.map((task, index) => (
-          <li key={task.id} className={`flex flex-col p-3 rounded-lg border ${task.completed ? "bg-gray-200 text-gray-500 line-through" : "bg-white"}`}>
-            <div className="flex justify-between items-center">
-              <span className="flex-1 break-words">{task.text}</span>
-              <div className="flex gap-2">
-                <button onClick={() => moveTaskUp(index)}>⬆</button>
-                <button onClick={() => moveTaskDown(index)}>⬇</button>
-                <button onClick={() => startPomodoro(task.id)}>⏳</button>
-                <button onClick={() => toggleCompleteTask(task.id)}>{task.completed ? "↩️" : "✅"}</button>
-                <button onClick={() => removeTask(task.id)}>❌</button>
-              </div>
+        {tasks.map((task) => (
+          <li key={task.id} className="flex items-center justify-between p-2 border rounded-md">
+            {/* ✅ タスク名と完了チェックボックス */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={task.completed}
+                onChange={() => toggleCompleteTask(task.id)}
+                className="w-5 h-5"
+              />
+              <span className={`text-lg ${task.completed ? "line-through text-gray-400" : "text-gray-800"}`}>
+                {task.text}
+              </span>
             </div>
-            <input type="date" value={task.deadline || ""} onChange={(e) => setDeadline(task.id, e.target.value)} />
+
+            {/* ✅ 締め切り設定 */}
+            <input
+              type="date"
+              value={task.deadline || ""}
+              onChange={(e) => setDeadline(task.id, e.target.value)}
+              className="border px-2 py-1 rounded-md text-sm"
+            />
+
+            {/* ✅ タスクの完了時間 (完了済みの場合のみ表示) */}
+            {task.completed && task.completedAt && (
+              <span className="text-sm text-gray-500">
+                ✅ 完了: {new Date(task.completedAt).toLocaleString()}
+              </span>
+            )}
+
+            {/* ✅ 操作ボタン */}
+            <div className="flex space-x-2">
+              <button onClick={() => moveTaskUp(task.id)} className="px-2 py-1 bg-blue-500 text-white rounded-md">
+                🔼
+              </button>
+              <button onClick={() => moveTaskDown(task.id)} className="px-2 py-1 bg-blue-500 text-white rounded-md">
+                🔽
+              </button>
+              <button onClick={() => startPomodoro(task.id)} className="px-2 py-1 bg-green-500 text-white rounded-md">
+                ⏳
+              </button>
+              <button onClick={() => removeTask(task.id)} className="px-2 py-1 bg-red-500 text-white rounded-md">
+                🗑️
+              </button>
+            </div>
           </li>
         ))}
       </ul>

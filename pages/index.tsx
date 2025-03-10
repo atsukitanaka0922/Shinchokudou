@@ -14,6 +14,7 @@ import BackgroundColorPicker from "@/components/BackgroundColorPicker";
 import TaskSuggestions from "@/components/TaskSuggestions";
 import BGMPlayer from "@/components/BGMPlayer";
 import Weather from "@/components/Weather";
+import AuthButton from "@/components/AuthButton";
 
 export default function Home() {
   const { loadTasks } = useTaskStore();
@@ -39,8 +40,10 @@ export default function Home() {
         <div className="container mx-auto p-4">
           <motion.h1 className="text-2xl font-bold text-center mb-4">
           </motion.h1>
+          <AuthButton />
           <BGMPlayer />
           <Dashboard />
+          <Weather />
           <TaskSuggestions />
           <TaskStats />
           <AddTask />
@@ -51,7 +54,7 @@ export default function Home() {
       ) : (
         <div className="max-w-4xl mx-auto grid grid-cols-1 gap-6 p-6 bg-white shadow-lg rounded-lg">
           <motion.div className="p-6 rounded-lg shadow-lg">
-            <BGMPlayer />
+            <AuthButton />
             <Dashboard />
             <Weather />
             <TaskStats />
@@ -74,12 +77,13 @@ export default function Home() {
 
             <motion.div className="p-6 rounded-lg shadow-lg">
               <h2 className="text-xl font-bold mb-4">⏳ ポモドーロタイマー</h2>
-              <PomodoroTimer />
               <PomodoroStats />
             </motion.div>
           </div>
         </div>
       )}
+            <PomodoroTimer />
+            <BGMPlayer />
     </motion.main>
   );
 }
