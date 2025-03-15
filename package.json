@@ -1,6 +1,6 @@
 {
-  "name": "~進捗堂~(Shinchokudou)",
-  "version": "1.2.4",
+  "name": "shinchokudou",
+  "version": "1.2.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
