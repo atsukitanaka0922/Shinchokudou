@@ -29,19 +29,23 @@ export default function DeadlineWarning() {
 
     // 優先度別にソート（期限が今日または過去のタスクを先頭に）
     urgent.sort((a, b) => {
-      if (a.deadline === todayStr && b.deadline !== todayStr) return -1;
-      if (a.deadline !== todayStr && b.deadline === todayStr) return 1;
-      if (a.deadline < todayStr && b.deadline >= todayStr) return -1;
-      if (a.deadline >= todayStr && b.deadline < todayStr) return 1;
-      return a.deadline.localeCompare(b.deadline);
+      // deadline が undefined の場合の対応を追加
+      const deadlineA = a.deadline || '';
+      const deadlineB = b.deadline || '';
+      
+      if (deadlineA === todayStr && deadlineB !== todayStr) return -1;
+      if (deadlineA !== todayStr && deadlineB === todayStr) return 1;
+      if (deadlineA < todayStr && deadlineB >= todayStr) return -1;
+      if (deadlineA >= todayStr && deadlineB < todayStr) return 1;
+      return deadlineA.localeCompare(deadlineB);
     });
     
     setUrgentTasks(urgent);
     
     // 新しいタスクに対して通知を表示
     urgent.forEach(task => {
-      // まだ通知を表示していないタスクがあれば通知を表示
-      if (!notificationShown[task.id] && (task.deadline <= todayStr)) {
+      // deadline が確実に存在することを確認
+      if (task.deadline && !notificationShown[task.id] && (task.deadline <= todayStr)) {
         showNotification(task);
         // 通知を表示したタスクを記録
         setNotificationShown(prev => ({...prev, [task.id]: true}));
