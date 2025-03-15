@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { useAuthStore } from "@/store/auth";
 import { usePomodoroStore } from "@/store/pomodoroStore";
+import { useFeedbackStore } from "@/store/feedbackStore";
 
 type Task = {
   id: string;
@@ -37,6 +38,27 @@ interface TaskState {
   clearTasks: () => void; // ログアウト時にタスクをリセット
   reorderTasks: (sourceIndex: number, destinationIndex: number) => Promise<void>; // ドラッグ&ドロップ用
 }
+
+// タスク完了時の効果音を再生する関数
+const playTaskCompletionSound = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      // サウンドファイルがあることを前提とします
+      const audio = new Audio("/sounds/task-complete.mp3");
+      audio.play().catch(err => console.log("オーディオ再生エラー:", err));
+    } catch (error) {
+      console.log("オーディオ再生エラー:", error);
+    }
+  }
+};
+
+// グローバルイベントを発火する関数
+const openPomodoroTab = () => {
+  if (typeof window !== 'undefined') {
+    // カスタムイベントを発火してポモドーロタブを開く
+    window.dispatchEvent(new CustomEvent('openPomodoroTab'));
+  }
+};
 
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
@@ -78,12 +100,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     const docRef = await addDoc(collection(db, "tasks"), newTask);
     set((state) => ({ tasks: [...state.tasks, { id: docRef.id, ...newTask }] }));
+    
+    // フィードバックメッセージを表示
+    const feedbackStore = useFeedbackStore.getState();
+    feedbackStore.setMessage(`タスク「${text}」を追加しました`);
+    
     console.log("✅ Firestore にタスク追加:", newTask);
   },
 
   removeTask: async (taskId) => {
+    const task = get().tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
     await deleteDoc(doc(db, "tasks", taskId));
     set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
+    
+    // フィードバックメッセージを表示
+    const feedbackStore = useFeedbackStore.getState();
+    feedbackStore.setMessage(`タスク「${task.text}」を削除しました`);
+    
     console.log("🗑️ タスク削除:", taskId);
   },
 
@@ -101,6 +136,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       ),
     }));
 
+    // タスクが完了に変更された場合
+    if (newCompleted) {
+      // 効果音を再生
+      playTaskCompletionSound();
+      
+      // フィードバックメッセージを表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！`);
+    }
+
     console.log(`✅ タスク ${taskId} を ${newCompleted ? "完了" : "未完了"} に変更`);
   },
 
@@ -114,6 +159,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         t.id === taskId ? { ...t, deadline } : t
       ),
     }));
+    
+    // フィードバックメッセージを表示
+    const feedbackStore = useFeedbackStore.getState();
+    feedbackStore.setMessage(`タスク「${task.text}」の期限を設定しました`);
+    
     console.log(`📅 タスク ${taskId} の締め切りを更新: ${deadline}`);
   },
 
@@ -168,6 +218,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     // PomodoroStore の startPomodoro メソッドを呼び出し
     const pomodoroStore = usePomodoroStore.getState();
     pomodoroStore.startPomodoro(taskId);
+    
+    // ポモドーロタブを開くイベントを発火
+    openPomodoroTab();
   },
 
   clearTasks: () => {
