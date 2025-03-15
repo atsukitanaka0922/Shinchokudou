@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { usePomodoroStore } from "@/store/pomodoroStore";
 import { useTaskStore } from "@/store/taskStore";
 import { useStatsStore } from "@/store/statsStore";
-import Draggable from "react-draggable";
+import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 
 export default function PomodoroTimer() {
   const { taskId, isRunning, timeLeft, isBreak, isVisible, stopPomodoro, tick } = usePomodoroStore();
@@ -49,8 +49,19 @@ export default function PomodoroTimer() {
     }
   }, [timeLeft, isBreak, incrementPomodoro]);
 
-  const handleDragStop = (_e: any, data: { x: number; y: number }) => {
-    const newPosition = { x: data.x, y: data.y };
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    // 移動距離を計算
+    const deltaX = result.destination.x - result.source.x;
+    const deltaY = result.destination.y - result.source.y;
+    
+    // 現在位置に移動距離を加算
+    const newPosition = {
+      x: position.x + deltaX,
+      y: position.y + deltaY
+    };
+    
     setPosition(newPosition);
     localStorage.setItem("pomodoroTimerPosition", JSON.stringify(newPosition));
   };
@@ -61,21 +72,55 @@ export default function PomodoroTimer() {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
+  // インラインスタイルで位置を設定
+  const timerStyle = {
+    transform: `translate(${position.x}px, ${position.y}px)`,
+    position: 'fixed',
+    bottom: '1rem',
+    right: '1rem',
+    zIndex: 50
+  };
+
   return (
-    <Draggable position={position} onStop={handleDragStop} bounds="parent">
-      <div className="fixed bottom-4 right-4 bg-white p-6 rounded-lg shadow-lg text-center z-50">
-        <h2 className="text-xl font-bold mb-4">{isBreak ? "☕ 休憩タイム" : "⏳ 作業タイム"}</h2>
-        {task && !isBreak && <p className="text-lg font-semibold text-gray-700 mb-2">📝 {task.text}</p>}
-        <p className="text-4xl font-bold mb-4">
-          {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
-        </p>
-        <button 
-          onClick={stopPomodoro} 
-          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-        >
-          ❌ 終了
-        </button>
-      </div>
-    </Draggable>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="pomodoro-timer" type="pomodoro">
+        {(provided) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            style={{ height: '100vh', width: '100vw', position: 'fixed', pointerEvents: 'none' }}
+          >
+            <Draggable draggableId="pomodoro-timer-draggable" index={0}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  style={{
+                    ...timerStyle,
+                    ...provided.draggableProps.style,
+                    pointerEvents: 'auto'
+                  } as React.CSSProperties}
+                  className="bg-white p-6 rounded-lg shadow-lg text-center"
+                >
+                  <h2 className="text-xl font-bold mb-4">{isBreak ? "☕ 休憩タイム" : "⏳ 作業タイム"}</h2>
+                  {task && !isBreak && <p className="text-lg font-semibold text-gray-700 mb-2">📝 {task.text}</p>}
+                  <p className="text-4xl font-bold mb-4">
+                    {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
+                  </p>
+                  <button 
+                    onClick={stopPomodoro} 
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                  >
+                    ❌ 終了
+                  </button>
+                </div>
+              )}
+            </Draggable>
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 }
