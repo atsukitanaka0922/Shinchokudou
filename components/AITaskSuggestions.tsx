@@ -58,7 +58,7 @@ export default function AITaskSuggestions() {
     loadSuggestions();
   };
 
-  // 天気アイコンを取得する
+  // 天気アイコンを取得する（絵文字を使用）
   const getWeatherEmoji = (condition: string) => {
     switch (condition) {
       case 'sunny': return '☀️';
@@ -108,7 +108,7 @@ export default function AITaskSuggestions() {
           </button>
         </div>
         
-        {/* 天気情報の表示 */}
+        {/* 天気情報の表示（絵文字を使用） */}
         {weather && (
           <div className="flex items-center text-sm text-gray-700 mr-2">
             <span className="mr-1">{getWeatherEmoji(weather.condition)}</span>
@@ -149,7 +149,7 @@ export default function AITaskSuggestions() {
         )}
       </AnimatePresence>
 
-      {/* 天気サマリー表示 */}
+      {/* 天気サマリー表示（絵文字を使用） */}
       {weather && !showInfo && (
         <div className="mb-4 p-3 bg-gray-50 rounded-md flex items-center">
           <div className="mr-3 text-3xl">{getWeatherEmoji(weather.condition)}</div>
@@ -173,9 +173,9 @@ export default function AITaskSuggestions() {
               <div className="flex-1">
                 <div className="flex items-center">
                   <span className="font-medium">{task.text}</span>
-                  {task.weatherRelevant && (
+                  {task.weatherRelevant && weather && (
                     <span className="ml-2 p-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                      {getWeatherEmoji(weather?.condition || 'unknown')}
+                      {getWeatherEmoji(weather.condition)}
                     </span>
                   )}
                   <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${

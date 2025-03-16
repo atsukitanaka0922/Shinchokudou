@@ -10,8 +10,9 @@ interface AppLogoProps {
 export default function AppLogo({ width = 200, height = 200, className = '' }: AppLogoProps) {
   return (
     <div className={`inline-block ${className}`}>
+      {/* Next.jsのImageコンポーネントを使用 */}
       <Image
-        src="/images/logo.png" // PNGファイルへのパス（publicフォルダ内のimagesディレクトリにlogo.pngを配置する前提）
+        src="/logo.png" // パスを修正：publicディレクトリ直下にlogo.pngを配置する前提
         alt="Shinchokudou Logo"
         width={width}
         height={height}

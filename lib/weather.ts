@@ -12,8 +12,8 @@ export interface WeatherData {
 export async function fetchWeather(): Promise<WeatherData> {
   try {
     // 実際のAPIを使用する場合はこちらを有効化
-     const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Kyoto&appid=ca476d863f09a22aa9bdcefdf2ba12e9&units=metric&lang=ja`);
-     const data = await response.json();
+    // const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Kyoto&appid=${API_KEY}&units=metric&lang=ja`);
+    // const data = await response.json();
     // 必要なデータを整形して返す処理...
 
     // モックデータを返す（APIキーなしでも動作するように）
@@ -25,7 +25,7 @@ export async function fetchWeather(): Promise<WeatherData> {
       temperature: 22,
       description: '晴れ',
       humidity: 60,
-      icon: '/images/weather/sunny.svg',
+      icon: '/icons/sunny.png', // パスを修正：PNGファイル形式を指定
       condition: 'sunny'
     };
   }
@@ -74,10 +74,9 @@ function getMockWeatherData(): WeatherData {
   }
   
   const condition = conditions[conditionIndex];
-  let icon = `/images/weather/${condition}.svg`;
-  if (condition === 'unknown') {
-    icon = '/images/weather/unknown.svg';
-  }
+  
+  // アイコンのパスを修正：PNGファイル形式を使用し、publicディレクトリ直下のiconsフォルダを参照
+  let icon = `/icons/${condition}.png`;
   
   // 温度をランダム生成（条件に基づいて調整）
   let temp;

@@ -8,7 +8,7 @@ import { useDevice } from "@/hooks/useDevice";
 import AddTaskWithPriority from "@/components/AddTaskWithPriority"; // AI優先度機能付きタスク追加
 import TaskListWithPriority from "@/components/TaskListWithPriority"; // 優先度表示付きタスクリスト
 import AITaskSuggestions from "@/components/AITaskSuggestions"; // AIタスク提案（天気機能付き）
-import AppLogo from "@/components/AppLogo"; // ハンコ風ロゴ
+import AppLogo from "@/components/AppLogo";
 import Dashboard from "@/components/Dashboard";
 import Feedback from "@/components/Feedback";
 import TaskStats from "@/components/TaskStats";
@@ -69,7 +69,7 @@ export default function Home() {
             <div className="flex justify-between items-center">
               <div className="flex items-center">
                 <AppLogo width={100} height={100} className="mr-4" />
-                <h1 className="text-3xl font-bold">Shinchokudou AI</h1>
+                <h1 className="text-3xl font-bold">進捗堂</h1>
               </div>
               <AuthButton />
             </div>

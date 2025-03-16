@@ -6,10 +6,10 @@ export default function ReadmeContent() {
   
   return (
     <div className="prose prose-slate max-w-none">
-      <h2 className="text-xl font-bold mb-3">Shinchokudou AI 📝✨</h2>
+      <h2 className="text-xl font-bold mb-3">進捗堂 📝✨</h2>
       
       <p className="mb-3">
-        Shinchokudou AI は、AI機能を活用した次世代のタスク管理・ポモドーロアプリです。あなたの生産性を最大化するための様々な機能を提供します。
+        進捗堂 は、AI機能を活用した次世代のタスク管理・ポモドーロアプリです。あなたの生産性を最大化するための様々な機能を提供します。
       </p>
       
       <h3 className="text-lg font-semibold mt-4 mb-2">🔍 主な機能</h3>
