@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { usePomodoroStore } from "@/store/pomodoroStore";
 import { useFeedbackStore } from "@/store/feedbackStore";
+import { PriorityLevel } from "@/lib/aiPriorityAssignment";
 
 type Task = {
   id: string;
@@ -23,15 +24,18 @@ type Task = {
   userId: string;
   deadline?: string;
   order: number;
+  priority: PriorityLevel; // 優先度フィールドを追加
+  createdAt?: number;      // 作成日時を追加
 };
 
 interface TaskState {
   tasks: Task[];
   loadTasks: () => void;
-  addTask: (text: string, deadline?: string) => Promise<void>;
+  addTask: (text: string, deadline?: string, priority?: PriorityLevel) => Promise<void>;
   removeTask: (taskId: string) => Promise<void>;
   toggleCompleteTask: (taskId: string) => Promise<void>;
   setDeadline: (taskId: string, deadline: string) => Promise<void>;
+  setPriority: (taskId: string, priority: PriorityLevel) => Promise<void>; // 優先度設定メソッドを追加
   moveTaskUp: (taskId: string) => void;
   moveTaskDown: (taskId: string) => void;
   startPomodoro: (taskId: string) => void;
@@ -84,7 +88,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set({ tasks });
   },
 
-  addTask: async (text, deadline) => {
+  addTask: async (text, deadline, priority = 'medium') => {
     const user = useAuthStore.getState().user;
     if (!user) return;
 
@@ -95,6 +99,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       completedAt: null,
       userId: user.uid,
       order: tasks.length + 1,
+      priority, // 優先度を設定
+      createdAt: Date.now(), // 作成日時を設定
       ...(deadline ? { deadline } : {}),
     };
 
@@ -165,6 +171,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     feedbackStore.setMessage(`タスク「${task.text}」の期限を設定しました`);
     
     console.log(`📅 タスク ${taskId} の締め切りを更新: ${deadline}`);
+  },
+
+  // 優先度設定メソッド
+  setPriority: async (taskId, priority) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    await updateDoc(doc(db, "tasks", taskId), { priority });
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === taskId ? { ...t, priority } : t
+      ),
+    }));
+    
+    // フィードバックメッセージを表示
+    const feedbackStore = useFeedbackStore.getState();
+    feedbackStore.setMessage(`タスク「${task.text}」の優先度を「${priority}」に設定しました`);
+    
+    console.log(`🔔 タスク ${taskId} の優先度を更新: ${priority}`);
   },
 
   moveTaskUp: (taskId) => {

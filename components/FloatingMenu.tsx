@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BGMPlayer from './BGMPlayer';
 import PomodoroTimer from './PomodoroTimer';
 import BackgroundColorPicker from './BackgroundColorPicker';
+import ReadmeContent from './ReadmeContent';
 
-type TabType = 'bgm' | 'pomodoro' | 'settings' | null;
+type TabType = 'bgm' | 'pomodoro' | 'settings' | 'readme' | null;
 
 export default function FloatingMenu() {
   const [activeTab, setActiveTab] = useState<TabType>(null);
@@ -39,8 +40,24 @@ export default function FloatingMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="mb-4 bg-white rounded-lg shadow-lg overflow-hidden w-72"
+            className={`mb-4 bg-white rounded-lg shadow-lg overflow-hidden ${activeTab === 'readme' ? 'w-96 max-h-[80vh] overflow-y-auto' : 'w-72'}`}
           >
+            {/* READMEタブ */}
+            {activeTab === 'readme' && (
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-3 border-b pb-2">
+                  <h3 className="font-bold text-lg">📖 アプリ説明</h3>
+                  <button
+                    onClick={() => setActiveTab(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <ReadmeContent />
+              </div>
+            )}
+            
             {/* BGMタブ */}
             {activeTab === 'bgm' && (
               <div className="p-4">
@@ -103,6 +120,16 @@ export default function FloatingMenu() {
 
       {/* 固定の浮遊ボタン */}
       <div className="flex space-x-2">
+        <button
+          onClick={() => toggleTab('readme')}
+          className={`p-3 rounded-full shadow-lg ${
+            activeTab === 'readme' ? 'bg-purple-600 text-white' : 'bg-white text-gray-800 hover:bg-purple-100'
+          }`}
+          aria-label="アプリ説明"
+        >
+          📖
+        </button>
+        
         <button
           onClick={() => toggleTab('pomodoro')}
           className={`p-3 rounded-full shadow-lg ${
