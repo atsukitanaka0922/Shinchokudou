@@ -5,7 +5,7 @@
  * 各タスクの編集、削除、ポモドーロ開始などの機能を提供します
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useAuthStore } from '@/store/auth';
@@ -19,6 +19,8 @@ export default function TaskListWithPriority() {
   // ストアからタスク機能を取得
   const { 
     tasks, 
+    loading,
+    loadTasks,
     toggleCompleteTask, 
     removeTask, 
     setDeadline, 
@@ -33,6 +35,25 @@ export default function TaskListWithPriority() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [editDeadline, setEditDeadline] = useState<string>('');
   const [editPriority, setEditPriority] = useState<PriorityLevel>('medium');
+  const [mounted, setMounted] = useState(false);
+  
+  // コンポーネントのマウント状態を追跡
+  useEffect(() => {
+    setMounted(true);
+    
+    // マウント後にタスクを確実に読み込む
+    if (user) {
+      console.log("タスクリストコンポーネントがマウントされました - タスク読み込み");
+      loadTasks();
+    }
+    
+    // デバッグログ
+    console.log("TaskListWithPriority - 現在のタスク:", tasks);
+    
+    return () => {
+      setMounted(false);
+    };
+  }, [user, loadTasks]);
   
   // タスクの展開/収納を切り替え
   const toggleExpand = (taskId: string) => {
@@ -69,6 +90,27 @@ export default function TaskListWithPriority() {
     return true;
   });
   
+  // デバッグ情報の出力
+  console.log("タスクリストレンダリング状態:", {
+    mounted,
+    user: user?.uid || "未ログイン",
+    loading,
+    tasksLength: tasks.length,
+    filteredTasksLength: filteredTasks.length
+  });
+  
+  // クライアントサイドレンダリングの確認
+  if (!mounted) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold mb-2">📋 タスク一覧</h2>
+        <div className="py-8 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+  
   // ユーザーがログインしていない場合
   if (!user) {
     return (
@@ -79,12 +121,31 @@ export default function TaskListWithPriority() {
     );
   }
   
+  // データ読み込み中の表示
+  if (loading) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold mb-2">📋 タスク一覧</h2>
+        <div className="py-8 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+        <p className="text-center text-gray-500">タスクを読み込んでいます...</p>
+      </div>
+    );
+  }
+  
   // タスクがない場合
   if (tasks.length === 0) {
     return (
       <div className="p-4 bg-white rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-2">📋 タスク一覧</h2>
         <p className="text-gray-600">タスクがありません。新しいタスクを追加してください。</p>
+        <button 
+          onClick={() => loadTasks()} 
+          className="mt-2 text-sm text-blue-500 hover:text-blue-700"
+        >
+          🔄 再読み込み
+        </button>
       </div>
     );
   }
@@ -128,11 +189,24 @@ export default function TaskListWithPriority() {
         ))}
       </div>
       
+      {/* タスク件数と再読み込みボタン */}
+      <div className="flex justify-between items-center px-3 py-2 border-b">
+        <p className="text-xs text-gray-500">
+          タスク: {tasks.length}件 (表示: {filteredTasks.length}件)
+        </p>
+        <button 
+          onClick={() => loadTasks()} 
+          className="text-xs text-blue-500 hover:text-blue-700"
+        >
+          🔄 再読み込み
+        </button>
+      </div>
+      
       {/* タスクリスト */}
       <ul className="divide-y divide-gray-200">
         {filteredTasks.length === 0 ? (
           <li className="p-4 text-center text-gray-500">
-            タスクがありません
+            現在の表示条件では該当するタスクがありません
           </li>
         ) : (
           filteredTasks.map((task) => (

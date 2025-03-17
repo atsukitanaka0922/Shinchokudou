@@ -16,7 +16,8 @@ import {
   query, 
   where, 
   getDocs, 
-  writeBatch 
+  writeBatch,
+  onSnapshot
 } from "firebase/firestore";
 import { useAuthStore } from "@/store/auth";
 import { usePomodoroStore } from "@/store/pomodoroStore";
@@ -43,6 +44,8 @@ export type Task = {
  */
 interface TaskState {
   tasks: Task[];
+  loading: boolean;
+  unsubscribe: (() => void) | null;
   loadTasks: () => void;
   addTask: (text: string, deadline?: string, priority?: PriorityLevel) => Promise<void>;
   removeTask: (taskId: string) => Promise<void>;
@@ -84,27 +87,62 @@ const openPomodoroTab = () => {
  */
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
+  loading: true,
+  unsubscribe: null,
 
   /**
-   * ユーザーのタスクをFirestoreから読み込む
+   * ユーザーのタスクをFirestoreからリアルタイムで監視・読み込む
    */
-  loadTasks: async () => {
+  loadTasks: () => {
     const user = useAuthStore.getState().user;
+    
+    // 前回のリスナーがあれば解除
+    const { unsubscribe } = get();
+    if (unsubscribe) {
+      unsubscribe();
+    }
+    
+    // ユーザーがログインしていない場合
     if (!user) {
       console.log("ユーザーがログインしていないため、タスクを取得できません");
-      set({ tasks: [] });
+      set({ tasks: [], loading: false, unsubscribe: null });
       return;
     }
-
-    const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
-    const snapshot = await getDocs(q);
-
-    const tasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Task[];
     
-    // orderフィールドで並べ替え
-    tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+    set({ loading: true });
     
-    set({ tasks });
+    try {
+      console.log(`Firestoreからユーザー ${user.uid} のタスクを監視開始`);
+      const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
+      
+      // リアルタイムリスナーを設定
+      const unsubscribeListener = onSnapshot(q, (snapshot) => {
+        const tasks = snapshot.docs.map((doc) => ({ 
+          id: doc.id, 
+          ...doc.data() 
+        })) as Task[];
+        
+        // orderフィールドで並べ替え
+        tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        console.log("Firestoreからタスク取得成功:", tasks);
+        set({ tasks, loading: false });
+      }, (error) => {
+        console.error("Firestoreの監視エラー:", error);
+        set({ loading: false });
+        
+        // エラーをフィードバックで表示
+        const feedbackStore = useFeedbackStore.getState();
+        feedbackStore.setMessage("タスクの読み込みに失敗しました");
+      });
+      
+      // リスナー解除関数を保存
+      set({ unsubscribe: unsubscribeListener });
+      
+    } catch (error) {
+      console.error("タスク監視の設定に失敗:", error);
+      set({ loading: false });
+    }
   },
 
   /**
@@ -129,12 +167,21 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       ...(deadline ? { deadline } : {}),
     };
 
-    const docRef = await addDoc(collection(db, "tasks"), newTask);
-    set((state) => ({ tasks: [...state.tasks, { id: docRef.id, ...newTask }] }));
-    
-    // フィードバック表示
-    const feedbackStore = useFeedbackStore.getState();
-    feedbackStore.setMessage(`タスク「${text}」を追加しました`);
+    try {
+      const docRef = await addDoc(collection(db, "tasks"), newTask);
+      // リアルタイムリスナーで自動更新されるので、手動で状態を更新する必要はない
+      
+      // フィードバック表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(`タスク「${text}」を追加しました`);
+      
+    } catch (error) {
+      console.error("タスク追加エラー:", error);
+      
+      // エラーをフィードバックで表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage("タスクの追加に失敗しました");
+    }
   },
 
   /**
@@ -145,12 +192,21 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const task = get().tasks.find(t => t.id === taskId);
     if (!task) return;
     
-    await deleteDoc(doc(db, "tasks", taskId));
-    set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
-    
-    // フィードバック表示
-    const feedbackStore = useFeedbackStore.getState();
-    feedbackStore.setMessage(`タスク「${task.text}」を削除しました`);
+    try {
+      await deleteDoc(doc(db, "tasks", taskId));
+      // リアルタイムリスナーで自動更新
+      
+      // フィードバック表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(`タスク「${task.text}」を削除しました`);
+      
+    } catch (error) {
+      console.error("タスク削除エラー:", error);
+      
+      // エラーをフィードバックで表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage("タスクの削除に失敗しました");
+    }
   },
 
   /**
@@ -163,22 +219,26 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     const newCompleted = !task.completed;
     const completedAt = newCompleted ? Date.now() : null;
-    await updateDoc(doc(db, "tasks", taskId), { completed: newCompleted, completedAt });
-
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.id === taskId ? { ...t, completed: newCompleted, completedAt } : t
-      ),
-    }));
-
-    // タスクが完了に変更された場合
-    if (newCompleted) {
-      // 効果音を再生
-      playTaskCompletionSound();
+    
+    try {
+      await updateDoc(doc(db, "tasks", taskId), { completed: newCompleted, completedAt });
+      // リアルタイムリスナーで自動更新
       
-      // フィードバック表示
+      // タスクが完了に変更された場合
+      if (newCompleted) {
+        // 効果音を再生
+        playTaskCompletionSound();
+        
+        // フィードバック表示
+        const feedbackStore = useFeedbackStore.getState();
+        feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！`);
+      }
+    } catch (error) {
+      console.error("タスク状態変更エラー:", error);
+      
+      // エラーをフィードバックで表示
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！`);
+      feedbackStore.setMessage("タスク状態の変更に失敗しました");
     }
   },
 
@@ -191,16 +251,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const task = get().tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    await updateDoc(doc(db, "tasks", taskId), { deadline });
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.id === taskId ? { ...t, deadline } : t
-      ),
-    }));
-    
-    // フィードバック表示
-    const feedbackStore = useFeedbackStore.getState();
-    feedbackStore.setMessage(`タスク「${task.text}」の期限を設定しました`);
+    try {
+      await updateDoc(doc(db, "tasks", taskId), { deadline });
+      // リアルタイムリスナーで自動更新
+      
+      // フィードバック表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(`タスク「${task.text}」の期限を設定しました`);
+    } catch (error) {
+      console.error("期限設定エラー:", error);
+      
+      // エラーをフィードバックで表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage("期限の設定に失敗しました");
+    }
   },
 
   /**
@@ -212,16 +276,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const task = get().tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    await updateDoc(doc(db, "tasks", taskId), { priority });
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.id === taskId ? { ...t, priority } : t
-      ),
-    }));
-    
-    // フィードバック表示
-    const feedbackStore = useFeedbackStore.getState();
-    feedbackStore.setMessage(`タスク「${task.text}」の優先度を「${priority}」に設定しました`);
+    try {
+      await updateDoc(doc(db, "tasks", taskId), { priority });
+      // リアルタイムリスナーで自動更新
+      
+      // フィードバック表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(`タスク「${task.text}」の優先度を「${priority}」に設定しました`);
+    } catch (error) {
+      console.error("優先度設定エラー:", error);
+      
+      // エラーをフィードバックで表示
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage("優先度の設定に失敗しました");
+    }
   },
 
   /**
@@ -241,8 +309,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       tasks[index - 1].order = index - 1;
 
       // Firestore も更新
-      updateDoc(doc(db, "tasks", tasks[index].id), { order: tasks[index].order });
-      updateDoc(doc(db, "tasks", tasks[index - 1].id), { order: tasks[index - 1].order });
+      try {
+        updateDoc(doc(db, "tasks", tasks[index].id), { order: tasks[index].order });
+        updateDoc(doc(db, "tasks", tasks[index - 1].id), { order: tasks[index - 1].order });
+      } catch (error) {
+        console.error("タスク移動エラー:", error);
+      }
 
       return { tasks };
     });
@@ -265,8 +337,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       tasks[index + 1].order = index + 1;
 
       // Firestore も更新
-      updateDoc(doc(db, "tasks", tasks[index].id), { order: tasks[index].order });
-      updateDoc(doc(db, "tasks", tasks[index + 1].id), { order: tasks[index + 1].order });
+      try {
+        updateDoc(doc(db, "tasks", tasks[index].id), { order: tasks[index].order });
+        updateDoc(doc(db, "tasks", tasks[index + 1].id), { order: tasks[index + 1].order });
+      } catch (error) {
+        console.error("タスク移動エラー:", error);
+      }
 
       return { tasks };
     });
@@ -292,15 +368,18 @@ export const useTaskStore = create<TaskState>((set, get) => ({
    * タスクリストをクリア（主にログアウト時に使用）
    */
   clearTasks: () => {
-    set({ tasks: [] });
+    // リスナーを解除
+    const { unsubscribe } = get();
+    if (unsubscribe) {
+      unsubscribe();
+    }
+    
+    set({ tasks: [], unsubscribe: null });
   },
   
   /**
-   * ドラッグ&ドロップによるタスクの並べ替え
-   * @param sourceIndex 元の位置のインデックス
-   * @param destinationIndex 移動先のインデックス
+   * ドラッグ&ドロップ機能は削除 - 将来の拡張のための参考として残しておく
    */
-  // ドラッグ&ドロップ機能は削除 - 将来の拡張のための参考として残しておく
   reorderTasks: async (sourceIndex, destinationIndex) => {
     console.log("ドラッグ&ドロップ機能は現在無効化されています");
     // 何もしないダミー関数

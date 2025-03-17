@@ -9,13 +9,14 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useTaskStore } from "@/store/taskStore";
 import { useThemeStore } from "@/store/themeStore";
+import { useAuthStore } from "@/store/auth";
 import { useDevice } from "@/hooks/useDevice";
 
 // コンポーネントのインポート
-import AddTaskWithPriority from "@/components/AddTaskWithPriority"; 
+import AddTaskWithPriority from "@/components/AddTaskWithPriority";
 import AITaskSuggestions from "@/components/AITaskSuggestions";
 import AppLogo from "@/components/AppLogo";
-import AuthButton from "@/components/AuthButton"; 
+import AuthButton from "@/components/AuthButton";
 import Dashboard from "@/components/Dashboard";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import Feedback from "@/components/Feedback";
@@ -32,16 +33,28 @@ import Weather from "@/components/Weather";
 export default function Home() {
   const { loadTasks } = useTaskStore();
   const { bgColor } = useThemeStore();
+  const { user } = useAuthStore(); // 認証状態を取得
   const isMobile = useDevice(); // デバイスタイプを判定
 
-  // 初期化処理
+  // 認証状態とタスクデータの初期化
   useEffect(() => {
-    // タスクデータの読み込み
+    console.log("ホームページがマウントされました - タスク読み込み開始");
+    // ユーザーの認証状態が変わるたびにタスクをロード
     loadTasks();
     
-    // テーマに基づく背景色の設定
+    // デバッグログ
+    console.log("タスク読み込み関数を呼び出しました", { user: user?.uid || "未ログイン" });
+    
+    // クリーンアップ関数
+    return () => {
+      console.log("ホームページがアンマウントされました");
+    };
+  }, [loadTasks, user]); // userの変更でも再実行
+
+  // テーマの適用
+  useEffect(() => {
     document.body.style.backgroundColor = bgColor;
-  }, [loadTasks, bgColor]);
+  }, [bgColor]);
 
   return (
     <motion.main
