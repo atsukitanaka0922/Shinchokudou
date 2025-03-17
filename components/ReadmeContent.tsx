@@ -1,19 +1,33 @@
+/**
+ * README内容表示コンポーネント
+ * 
+ * アプリケーションの使用方法、機能説明、更新履歴などを表示するコンポーネント
+ * アプリのドキュメント機能として機能し、ユーザーガイドを提供します
+ */
+
 import React from 'react';
 
+/**
+ * README内容コンポーネント
+ * アプリの詳細な説明と使用方法を提供
+ */
 export default function ReadmeContent() {
-  // お問い合わせURLを定義（実際のURLに置き換えてください）
-  const contactUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdENYnpf4xyn8Mli9TumjhRYrV1Zqt1RSJsDNeCREP0_5ghjA/viewform"; // ここを実際のURLに変更してください
+  // お問い合わせフォームのURL
+  const contactUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdENYnpf4xyn8Mli9TumjhRYrV1Zqt1RSJsDNeCREP0_5ghjA/viewform";
   
   return (
     <div className="prose prose-slate max-w-none">
+      {/* アプリケーションタイトルと概要 */}
       <h2 className="text-xl font-bold mb-3">進捗堂 📝✨</h2>
       
       <p className="mb-3">
         進捗堂 は、AI機能を活用した次世代のタスク管理・ポモドーロアプリです。あなたの生産性を最大化するための様々な機能を提供します。
       </p>
       
+      {/* 主要機能の説明セクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🔍 主な機能</h3>
       
+      {/* AIタスク提案機能 */}
       <h4 className="font-medium mt-3 mb-1">1. AIタスク提案</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
@@ -21,6 +35,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* AI優先度設定機能 */}
       <h4 className="font-medium mt-3 mb-1">2. AI優先度設定</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
@@ -28,6 +43,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* ポモドーロタイマー機能 */}
       <h4 className="font-medium mt-3 mb-1">3. ポモドーロタイマー</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
@@ -49,6 +65,7 @@ export default function ReadmeContent() {
         </div>
       </div>
       
+      {/* 天気ベースのタスク提案機能 */}
       <h4 className="font-medium mt-3 mb-1">4. 天気に基づいたタスク提案</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
@@ -56,6 +73,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* BGMプレイヤー機能 */}
       <h4 className="font-medium mt-3 mb-1">5. BGMプレイヤー</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
@@ -63,6 +81,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* デッドライン管理機能 */}
       <h4 className="font-medium mt-3 mb-1">6. デッドライン管理</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
@@ -70,6 +89,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* 使い始め方の説明 */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🚀 使い始め方</h3>
       
       <div className="pl-4 mb-3">
@@ -95,6 +115,7 @@ export default function ReadmeContent() {
         </ol>
       </div>
       
+      {/* ヒントとコツのセクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">💡 ヒントとコツ</h3>
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
@@ -112,6 +133,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* トラブルシューティングのセクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">⚙️ トラブルシューティング</h3>
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
@@ -126,19 +148,33 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* 更新履歴セクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🔄 更新履歴</h3>
 
+      {/* 最新バージョン */}
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium">v1.2.2 (最新)</p>
+            <p className="font-medium">v1.3.0</p>
+            <ul className="list-disc pl-5">
+              <li>UIの大幅改善</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      {/* 過去のバージョン */}
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
+          <div>
+            <p className="font-medium">v1.2.2</p>
             <ul className="list-disc pl-5">
               <li>スマホ版で締め切り間近のタスクがあると動かなくなる不具合の修正</li>
             </ul>
           </div>
         </div>
       </div>
-      
+
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
@@ -181,6 +217,7 @@ export default function ReadmeContent() {
         </div>
       </div>
       
+      {/* クレジットセクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">📝 クレジット</h3>
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
@@ -192,6 +229,7 @@ export default function ReadmeContent() {
         <p><strong>ホスティング:</strong> Vercel</p>
       </div>
       
+      {/* お問い合わせセクション */}
       <div className="bg-blue-50 p-3 rounded-lg mt-6 mb-2 text-sm">
         <p className="font-medium text-blue-800 mb-1">🙋‍♀️ サポートが必要ですか？</p>
         <p className="text-blue-700">
@@ -199,6 +237,7 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* フッターと著作権表示 */}
       <p className="text-center text-xs text-gray-500 mt-6">
         &copy; 2025 Shinchokudou AI - 生産性向上のためのタスク管理ソリューション
       </p>
