@@ -300,31 +300,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
    * @param sourceIndex 元の位置のインデックス
    * @param destinationIndex 移動先のインデックス
    */
+  // ドラッグ&ドロップ機能は削除 - 将来の拡張のための参考として残しておく
   reorderTasks: async (sourceIndex, destinationIndex) => {
-    const user = useAuthStore.getState().user;
-    if (!user) return;
-    
-    set((state) => {
-      const result = [...state.tasks];
-      const [removed] = result.splice(sourceIndex, 1);
-      result.splice(destinationIndex, 0, removed);
-      
-      // order フィールドを更新
-      const updatedTasks = result.map((task, index) => ({
-        ...task,
-        order: index
-      }));
-      
-      return { tasks: updatedTasks };
-    });
-    
-    // Firestore のバッチ更新
-    const batch = writeBatch(db);
-    get().tasks.forEach((task) => {
-      const taskRef = doc(db, "tasks", task.id);
-      batch.update(taskRef, { order: task.order });
-    });
-    
-    await batch.commit();
+    console.log("ドラッグ&ドロップ機能は現在無効化されています");
+    // 何もしないダミー関数
+    return;
   }
 }));

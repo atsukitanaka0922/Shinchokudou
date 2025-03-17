@@ -1,253 +1,175 @@
-import { useState, useEffect } from "react";
-import { useTaskStore } from "@/store/taskStore";
-import { useAuthStore } from "@/store/auth";
-import { useFeedbackStore } from "@/store/feedbackStore";
-import { predictTaskPriority, PriorityLevel } from "@/lib/aiPriorityAssignment";
-import { motion, AnimatePresence } from "framer-motion";
+/**
+ * タスク追加コンポーネント（優先度設定機能付き）
+ * 
+ * ユーザーが新しいタスクを入力し、期限と優先度を設定して追加するためのフォーム
+ * AIによる優先度提案機能も統合されています
+ */
 
+import { useState, useRef, FormEvent } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTaskStore } from '@/store/taskStore';
+import { useAuthStore } from '@/store/auth';
+import { suggestPriority, PriorityLevel } from '@/lib/aiPriorityAssignment';
+import { useFeedbackStore } from '@/store/feedbackStore';
+
+/**
+ * 優先度設定付きタスク追加コンポーネント
+ */
 export default function AddTaskWithPriority() {
-  const [taskText, setTaskText] = useState("");
-  const [deadline, setDeadline] = useState("");
-  const [priority, setPriority] = useState<PriorityLevel>("medium");
-  const [aiSuggestion, setAiSuggestion] = useState<PriorityLevel | null>(null);
-  const [aiFactors, setAiFactors] = useState<string[]>([]);
-  const [showFactors, setShowFactors] = useState(false);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [priorityUpdated, setPriorityUpdated] = useState(false);
-  
+  // ストアからの状態と関数
   const { addTask } = useTaskStore();
   const { user } = useAuthStore();
   const { setMessage } = useFeedbackStore();
+  
+  // ローカル状態
+  const [text, setText] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [priority, setPriority] = useState<PriorityLevel>('medium');
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // タスクテキストが変更されたときに自動的に優先度を予測
-  useEffect(() => {
-    // 300ms後に予測を実行（タイピング中は実行しない）
-    if (typingTimeout) clearTimeout(typingTimeout);
+  /**
+   * タスク追加フォーム送信処理
+   */
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     
-    if (taskText.length > 3) {
-      const timeout = setTimeout(async () => {
-        await predictPriority();
-      }, 300);
-      
-      setTypingTimeout(timeout);
-    } else {
-      setAiSuggestion(null);
-      setAiFactors([]);
+    // テキストが空の場合は処理しない
+    if (!text.trim()) return;
+    
+    if (!user) {
+      setMessage('ログインが必要です');
+      return;
     }
-
-    return () => {
-      if (typingTimeout) clearTimeout(typingTimeout);
-    };
-  }, [taskText, deadline]);
-
-  // AIによる優先度予測を実行
-  const predictPriority = async () => {
-    if (!taskText) return;
     
     try {
-      const result = await predictTaskPriority(
-        taskText,
-        deadline,
-        user ? user.uid : undefined
-      );
+      // タスクを追加
+      await addTask(text, deadline, priority);
       
-      setAiSuggestion(result.priority);
-      setAiFactors(result.factors);
+      // フォームをリセット
+      setText('');
+      setDeadline('');
+      setPriority('medium');
       
-      // ユーザーが明示的に優先度を変更していない場合は、AIの提案を採用
-      if (!priorityUpdated) {
-        setPriority(result.priority);
-      }
+      // 入力フィールドにフォーカス
+      inputRef.current?.focus();
     } catch (error) {
-      console.error("優先度予測エラー:", error);
+      console.error('タスク追加エラー:', error);
+      setMessage('タスクの追加に失敗しました');
     }
   };
 
-  // 手動での優先度設定
-  const handlePriorityChange = (newPriority: PriorityLevel) => {
-    setPriority(newPriority);
-    setPriorityUpdated(true);
-  };
-
-  // AIの提案を適用
-  const applyAiSuggestion = () => {
-    if (aiSuggestion) {
-      setPriority(aiSuggestion);
-      setMessage("AIの提案を適用しました");
+  /**
+   * タスクテキストが変更された時のハンドラー
+   * AIによる優先度提案を取得
+   */
+  const handleTextChange = async (value: string) => {
+    setText(value);
+    
+    // テキストが十分な長さの場合、AIによる優先度提案を取得
+    if (value.length > 5) {
+      setLoading(true);
+      try {
+        const suggestedPriority = await suggestPriority(value);
+        setPriority(suggestedPriority);
+      } catch (error) {
+        console.error('優先度提案エラー:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  // タスク追加処理
-  const handleAdd = async () => {
-    if (taskText.trim()) {
-      // priorityフィールドを含むタスクを追加
-      await addTask(taskText, deadline, priority);
-      setTaskText("");
-      setDeadline("");
-      setPriority("medium");
-      setPriorityUpdated(false);
-    }
-  };
-
-  // 優先度によるスタイル
-  const getPriorityStyles = (level: PriorityLevel) => {
-    switch (level) {
-      case 'urgent':
-        return {
-          bgColor: 'bg-red-500',
-          hoverColor: 'hover:bg-red-600',
-          textColor: 'text-white',
-          label: '緊急'
-        };
+  /**
+   * 優先度に応じたスタイルクラスを取得
+   */
+  const getPriorityClass = (currentPriority: PriorityLevel) => {
+    switch (currentPriority) {
       case 'high':
-        return {
-          bgColor: 'bg-orange-500',
-          hoverColor: 'hover:bg-orange-600',
-          textColor: 'text-white',
-          label: '高'
-        };
+        return 'bg-red-100 text-red-800 border-red-300';
       case 'medium':
-        return {
-          bgColor: 'bg-yellow-400',
-          hoverColor: 'hover:bg-yellow-500',
-          textColor: 'text-gray-800',
-          label: '中'
-        };
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'low':
-        return {
-          bgColor: 'bg-green-400',
-          hoverColor: 'hover:bg-green-500',
-          textColor: 'text-gray-800',
-          label: '低'
-        };
+        return 'bg-green-100 text-green-800 border-green-300';
       default:
-        return {
-          bgColor: 'bg-gray-400',
-          hoverColor: 'hover:bg-gray-500',
-          textColor: 'text-white',
-          label: '中'
-        };
+        return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
-  // 現在の優先度のスタイル
-  const currentPriorityStyles = getPriorityStyles(priority);
-  // AIの提案の優先度のスタイル
-  const aiSuggestionStyles = aiSuggestion ? getPriorityStyles(aiSuggestion) : null;
+  // AIによる優先度設定のローディング表示
+  const priorityLoadingIndicator = loading && (
+    <div className="absolute top-2 right-2">
+      <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-lg">
-      <h2 className="text-lg font-bold mb-4">📝 AIによる優先度予測付きタスク追加</h2>
+    <form onSubmit={handleSubmit} className="mb-4 relative">
+      {/* タスク入力フィールド */}
+      <div className="mb-3 relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={text}
+          onChange={(e) => handleTextChange(e.target.value)}
+          placeholder="新しいタスクを入力..."
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {priorityLoadingIndicator}
+      </div>
       
-      <div className="space-y-3">
-        {/* タスク入力フィールド */}
-        <div>
-          <label htmlFor="task-text" className="block text-sm font-medium text-gray-700 mb-1">
-            タスク内容
-          </label>
+      <div className="flex flex-wrap gap-2 mb-3">
+        {/* 期限入力フィールド */}
+        <div className="flex-grow">
           <input
-            id="task-text"
-            type="text"
-            value={taskText}
-            onChange={(e) => {
-              setTaskText(e.target.value);
-              setPriorityUpdated(false);
-            }}
-            placeholder="新しいタスクを追加"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* 期限設定 */}
-        <div>
-          <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-1">
-            期限（任意）
-          </label>
-          <input
-            id="deadline"
             type="date"
             value={deadline}
             onChange={(e) => setDeadline(e.target.value)}
-            className="border p-2 rounded w-full"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
           />
         </div>
-
-        {/* 優先度設定 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            優先度
-          </label>
-          <div className="flex space-x-2">
-            {(['urgent', 'high', 'medium', 'low'] as PriorityLevel[]).map((level) => {
-              const styles = getPriorityStyles(level);
-              return (
-                <button
-                  key={level}
-                  onClick={() => handlePriorityChange(level)}
-                  className={`px-4 py-2 rounded-lg ${styles.bgColor} ${styles.hoverColor} ${styles.textColor} ${
-                    priority === level ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-                  }`}
-                >
-                  {styles.label}
-                </button>
-              );
-            })}
-          </div>
+        
+        {/* 優先度選択ボタングループ */}
+        <div className="flex space-x-1">
+          {(['high', 'medium', 'low'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPriority(p)}
+              className={`px-3 py-1 rounded-lg border ${
+                priority === p ? getPriorityClass(p) : 'bg-gray-100 text-gray-600 border-gray-300'
+              }`}
+            >
+              {p === 'high' ? '高' : p === 'medium' ? '中' : '低'}
+            </button>
+          ))}
         </div>
-
-        {/* AI提案表示エリア */}
-        {aiSuggestion && (
-          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <span className="text-sm font-medium">AIの優先度提案:</span>
-                <span className={`ml-2 px-3 py-1 rounded-lg text-sm ${aiSuggestionStyles?.bgColor} ${aiSuggestionStyles?.textColor}`}>
-                  {aiSuggestionStyles?.label}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <button
-                  onClick={() => setShowFactors(!showFactors)}
-                  className="text-blue-500 hover:text-blue-700 text-sm mr-2"
-                >
-                  {showFactors ? '理由を隠す' : '理由を表示'}
-                </button>
-                <button
-                  onClick={applyAiSuggestion}
-                  className="px-2 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600"
-                >
-                  適用
-                </button>
-              </div>
-            </div>
-            
-            <AnimatePresence>
-              {showFactors && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-2 text-sm text-gray-600"
-                >
-                  <ul className="list-disc pl-5 space-y-1">
-                    {aiFactors.map((factor, index) => (
-                      <li key={index}>{factor}</li>
-                    ))}
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
-
-        {/* 送信ボタン */}
-        <button
-          onClick={handleAdd}
-          className="mt-3 w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          追加
-        </button>
       </div>
-    </div>
+      
+      {/* 送信ボタン */}
+      <motion.button
+        type="submit"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        disabled={!text.trim()}
+      >
+        タスクを追加
+      </motion.button>
+      
+      {/* AIによる優先度提案を使用している旨の表示 */}
+      <AnimatePresence>
+        {text.length > 5 && (
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-xs text-gray-500 mt-2"
+          >
+            AIによる優先度提案: {loading ? '分析中...' : priority === 'high' ? '高' : priority === 'medium' ? '中' : '低'}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </form>
   );
 }

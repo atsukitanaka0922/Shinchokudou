@@ -1,54 +1,107 @@
-import { useEffect } from "react";
-import { useAuthStore } from "@/store/auth";
-import { useTaskStore } from "@/store/taskStore";
-import { useDevice } from "@/hooks/useDevice";
-import { PriorityLevel } from "@/lib/aiPriorityAssignment";
+/**
+ * 優先度付きタスクリストコンポーネント
+ * 
+ * タスクを優先度別に表示し、完了/未完了でフィルタリングするリスト
+ * 各タスクの編集、削除、ポモドーロ開始などの機能を提供します
+ */
 
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTaskStore } from '@/store/taskStore';
+import { useAuthStore } from '@/store/auth';
+import { PriorityLevel } from '@/lib/aiPriorityAssignment';
+
+/**
+ * 優先度付きタスクリストコンポーネント
+ * タスクの表示、操作などの機能を提供
+ */
 export default function TaskListWithPriority() {
-  const { user } = useAuthStore();
+  // ストアからタスク機能を取得
   const { 
     tasks, 
     toggleCompleteTask, 
     removeTask, 
     setDeadline, 
-    setPriority,
-    moveTaskUp, 
-    moveTaskDown, 
-    startPomodoro, 
-    clearTasks, 
-    loadTasks 
+    setPriority, 
+    startPomodoro
   } = useTaskStore();
-  const isMobile = useDevice();
-
-  // ユーザーがログアウトしたらタスクをリセット、ログインしたらタスクを再取得
-  useEffect(() => {
-    if (!user) {
-      clearTasks(); // ログアウト時にタスクをリセット
+  
+  const { user } = useAuthStore();
+  
+  // ローカル状態
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [editDeadline, setEditDeadline] = useState<string>('');
+  const [editPriority, setEditPriority] = useState<PriorityLevel>('medium');
+  
+  // タスクの展開/収納を切り替え
+  const toggleExpand = (taskId: string) => {
+    if (expandedTaskId === taskId) {
+      setExpandedTaskId(null);
     } else {
-      loadTasks(); // ログイン時にタスクを取得
-    }
-  }, [user, clearTasks, loadTasks]);
-
-  // 優先度に基づくスタイルを取得
-  const getPriorityStyles = (priority: PriorityLevel) => {
-    switch (priority) {
-      case 'urgent':
-        return 'bg-red-100 border-l-4 border-red-500';
-      case 'high':
-        return 'bg-orange-100 border-l-4 border-orange-500';
-      case 'medium':
-        return 'bg-yellow-50 border-l-4 border-yellow-500';
-      case 'low':
-        return 'bg-green-50 border-l-4 border-green-500';
-      default:
-        return 'bg-gray-50';
+      setExpandedTaskId(taskId);
+      
+      // 選択したタスクの現在の値をフォームにセット
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        setEditDeadline(task.deadline || '');
+        setEditPriority(task.priority || 'medium');
+      }
     }
   };
-
-  // 優先度のラベル
-  const getPriorityLabel = (priority: PriorityLevel) => {
+  
+  // 期限の更新処理
+  const handleUpdateDeadline = (taskId: string) => {
+    setDeadline(taskId, editDeadline);
+    setExpandedTaskId(null); // 編集パネルを閉じる
+  };
+  
+  // 優先度の更新処理
+  const handleUpdatePriority = (taskId: string, priority: PriorityLevel) => {
+    setPriority(taskId, priority);
+    setEditPriority(priority);
+  };
+  
+  // フィルター条件に基づいてタスクをフィルタリング
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'active') return !task.completed;
+    if (filter === 'completed') return task.completed;
+    return true;
+  });
+  
+  // ユーザーがログインしていない場合
+  if (!user) {
+    return (
+      <div className="p-4 bg-gray-100 rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold mb-2">📋 タスク一覧</h2>
+        <p className="text-gray-600">ログインするとタスクが表示されます</p>
+      </div>
+    );
+  }
+  
+  // タスクがない場合
+  if (tasks.length === 0) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold mb-2">📋 タスク一覧</h2>
+        <p className="text-gray-600">タスクがありません。新しいタスクを追加してください。</p>
+      </div>
+    );
+  }
+  
+  // 優先度に応じたスタイルクラスを取得
+  const getPriorityClass = (priority: PriorityLevel) => {
     switch (priority) {
-      case 'urgent': return '緊急';
+      case 'high': return 'bg-red-100 text-red-800 border-red-300';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'low': return 'bg-green-100 text-green-800 border-green-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+  
+  // 優先度表示テキストを取得
+  const getPriorityText = (priority: PriorityLevel) => {
+    switch (priority) {
       case 'high': return '高';
       case 'medium': return '中';
       case 'low': return '低';
@@ -57,186 +110,178 @@ export default function TaskListWithPriority() {
   };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-lg">
-      <h2 className="text-lg font-bold mb-4">📝 タスク一覧</h2>
-      {tasks.length === 0 ? (
-        <p className="text-gray-500">タスクがありません</p>
-      ) : (
-        <ul className="space-y-2">
-          {tasks.map((task) => (
+    <div className="bg-white rounded-lg shadow-md">
+      {/* フィルタータブ */}
+      <div className="flex border-b">
+        {(['all', 'active', 'completed'] as const).map((option) => (
+          <button
+            key={option}
+            onClick={() => setFilter(option)}
+            className={`flex-1 py-2 text-center text-sm font-medium ${
+              filter === option
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {option === 'all' ? 'すべて' : option === 'active' ? '未完了' : '完了済み'}
+          </button>
+        ))}
+      </div>
+      
+      {/* タスクリスト */}
+      <ul className="divide-y divide-gray-200">
+        {filteredTasks.length === 0 ? (
+          <li className="p-4 text-center text-gray-500">
+            タスクがありません
+          </li>
+        ) : (
+          filteredTasks.map((task) => (
             <li
               key={task.id}
-              className={`${getPriorityStyles(task.priority || 'medium')} rounded-md overflow-hidden ${
-                task.completed ? 'opacity-70' : ''
-              }`}
+              className={`p-4 ${task.completed ? 'bg-gray-50' : ''}`}
             >
-              <div className={isMobile ? "p-3" : "p-3 flex items-center justify-between"}>
-                {isMobile ? (
-                  // モバイル表示（縦長レイアウト）
-                  <div className="space-y-2">
-                    {/* タスク情報ヘッダー */}
-                    <div className="flex justify-between items-center">
-                      {/* 優先度バッジ */}
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        task.priority === 'urgent' ? 'bg-red-200 text-red-800' :
-                        task.priority === 'high' ? 'bg-orange-200 text-orange-800' :
-                        task.priority === 'medium' ? 'bg-yellow-200 text-yellow-800' :
-                        'bg-green-200 text-green-800'
-                      }`}>
-                        {getPriorityLabel(task.priority || 'medium')}
-                      </span>
-                      
-                      {/* 締め切り */}
-                      {task.deadline && (
-                        <span className="text-xs text-gray-500">
-                          期限: {task.deadline}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* タスク名と完了チェックボックス */}
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={() => toggleCompleteTask(task.id)}
-                        className="w-5 h-5"
-                      />
-                      <span className={`text-lg break-words ${task.completed ? "line-through text-gray-400" : "text-gray-800"}`}>
-                        {task.text}
-                      </span>
-                    </div>
-                    
-                    {/* 設定エリア */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* 締め切り設定 */}
-                      <div>
-                        <label className="text-xs text-gray-500 block">期限:</label>
-                        <input
-                          type="date"
-                          value={task.deadline || ""}
-                          onChange={(e) => setDeadline(task.id, e.target.value)}
-                          className="border px-2 py-1 rounded-md text-sm w-full"
-                        />
-                      </div>
-                      
-                      {/* 優先度設定 */}
-                      <div>
-                        <label className="text-xs text-gray-500 block">優先度:</label>
-                        <select
-                          value={task.priority || 'medium'}
-                          onChange={(e) => setPriority(task.id, e.target.value as PriorityLevel)}
-                          className="border px-2 py-1 rounded-md text-sm w-full"
-                        >
-                          <option value="urgent">緊急</option>
-                          <option value="high">高</option>
-                          <option value="medium">中</option>
-                          <option value="low">低</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* タスクの完了時間 (完了済みの場合のみ表示) */}
-                    {task.completed && task.completedAt && (
-                      <span className="text-sm text-gray-500 block">
-                        ✅ 完了: {new Date(task.completedAt).toLocaleString()}
+              <div className="flex items-start">
+                {/* 完了チェックボックス */}
+                <div className="flex-shrink-0 mr-2">
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => toggleCompleteTask(task.id)}
+                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 rounded"
+                  />
+                </div>
+                
+                {/* タスク内容 */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-sm font-medium ${
+                      task.completed ? 'line-through text-gray-500' : 'text-gray-900'
+                    }`}
+                  >
+                    {task.text}
+                  </p>
+                  
+                  {/* タスクのメタ情報 */}
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-500">
+                    {/* 期限表示 */}
+                    {task.deadline && (
+                      <span className="inline-flex items-center">
+                        📅 {task.deadline}
                       </span>
                     )}
-
-                    {/* 操作ボタン */}
-                    <div className="flex justify-between mt-2">
-                      <div className="flex space-x-2">
-                        <button onClick={() => moveTaskUp(task.id)} className="px-2 py-1 bg-blue-500 text-white rounded-md">
-                          🔼
-                        </button>
-                        <button onClick={() => moveTaskDown(task.id)} className="px-2 py-1 bg-blue-500 text-white rounded-md">
-                          🔽
-                        </button>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button onClick={() => startPomodoro(task.id)} className="px-2 py-1 bg-green-500 text-white rounded-md">
-                          ⏳
-                        </button>
-                        <button onClick={() => removeTask(task.id)} className="px-2 py-1 bg-red-500 text-white rounded-md">
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
+                    
+                    {/* 優先度表示 */}
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
+                        getPriorityClass(task.priority)
+                      }`}
+                    >
+                      {getPriorityText(task.priority)}
+                    </span>
+                    
+                    {/* 作成日時表示 */}
+                    {task.createdAt && (
+                      <span className="inline-flex items-center">
+                        作成: {new Date(task.createdAt).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  // デスクトップ表示（横長レイアウト）
-                  <>
-                    {/* 左側: タスク名と完了チェックボックス */}
-                    <div className="flex items-center space-x-3 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={() => toggleCompleteTask(task.id)}
-                        className="w-5 h-5"
-                      />
-                      <div className="flex flex-col">
-                        <span className={`text-lg ${task.completed ? "line-through text-gray-400" : "text-gray-800"}`}>
-                          {task.text}
-                        </span>
-                        {task.completed && task.completedAt && (
-                          <span className="text-xs text-gray-500">
-                            ✅ 完了: {new Date(task.completedAt).toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 中央: 優先度と締め切り */}
-                    <div className="flex items-center space-x-4 mx-4">
-                      {/* 優先度設定 */}
-                      <div className="w-24">
-                        <label className="text-xs text-gray-500 block">優先度:</label>
-                        <select
-                          value={task.priority || 'medium'}
-                          onChange={(e) => setPriority(task.id, e.target.value as PriorityLevel)}
-                          className="border px-2 py-1 rounded-md text-sm w-full"
-                        >
-                          <option value="urgent">緊急</option>
-                          <option value="high">高</option>
-                          <option value="medium">中</option>
-                          <option value="low">低</option>
-                        </select>
-                      </div>
-
-                      {/* 締め切り設定 */}
-                      <div className="w-40">
-                        <label className="text-xs text-gray-500 block">期限:</label>
-                        <input
-                          type="date"
-                          value={task.deadline || ""}
-                          onChange={(e) => setDeadline(task.id, e.target.value)}
-                          className="border px-2 py-1 rounded-md text-sm w-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* 右側: 操作ボタン */}
-                    <div className="flex space-x-2">
-                      <button onClick={() => moveTaskUp(task.id)} className="px-2 py-1 bg-blue-500 text-white rounded-md">
-                        🔼
-                      </button>
-                      <button onClick={() => moveTaskDown(task.id)} className="px-2 py-1 bg-blue-500 text-white rounded-md">
-                        🔽
-                      </button>
-                      <button onClick={() => startPomodoro(task.id)} className="px-2 py-1 bg-green-500 text-white rounded-md">
-                        ⏳
-                      </button>
-                      <button onClick={() => removeTask(task.id)} className="px-2 py-1 bg-red-500 text-white rounded-md">
-                        🗑️
-                      </button>
-                    </div>
-                  </>
-                )}
+                </div>
+                
+                {/* タスク操作ボタン */}
+                <div className="flex ml-2 space-x-1">
+                  {/* 編集ボタン */}
+                  <button
+                    onClick={() => toggleExpand(task.id)}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    ✏️
+                  </button>
+                  
+                  {/* ポモドーロ開始ボタン */}
+                  <button
+                    onClick={() => startPomodoro(task.id)}
+                    className="text-gray-400 hover:text-gray-500"
+                    disabled={task.completed}
+                  >
+                    ⏱️
+                  </button>
+                  
+                  {/* 削除ボタン */}
+                  <button
+                    onClick={() => removeTask(task.id)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
+              
+              {/* タスク編集パネル */}
+              <AnimatePresence>
+                {expandedTaskId === task.id && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="mt-3 bg-gray-50 p-3 rounded-md overflow-hidden"
+                  >
+                    <div className="space-y-3">
+                      {/* 期限編集 */}
+                      <div>
+                        <label className="block text-xs text-gray-700 mb-1">
+                          期限:
+                        </label>
+                        <div className="flex">
+                          <input
+                            type="date"
+                            value={editDeadline}
+                            onChange={(e) => setEditDeadline(e.target.value)}
+                            className="flex-1 text-sm p-1 border rounded"
+                          />
+                          <button
+                            onClick={() => handleUpdateDeadline(task.id)}
+                            className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded"
+                          >
+                            更新
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* 優先度編集 */}
+                      <div>
+                        <label className="block text-xs text-gray-700 mb-1">
+                          優先度:
+                        </label>
+                        <div className="flex space-x-1">
+                          {(['high', 'medium', 'low'] as const).map((p) => (
+                            <button
+                              key={p}
+                              onClick={() => handleUpdatePriority(task.id, p)}
+                              className={`flex-1 px-2 py-1 text-xs rounded ${
+                                task.priority === p
+                                  ? getPriorityClass(p)
+                                  : 'bg-gray-200 text-gray-700'
+                              }`}
+                            >
+                              {p === 'high' ? '高' : p === 'medium' ? '中' : '低'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </li>
-          ))}
-        </ul>
-      )}
+          ))
+        )}
+      </ul>
+      
+      {/* タスク数の表示 */}
+      <div className="p-3 text-xs text-gray-500 border-t">
+        合計: {filteredTasks.length} / {tasks.length} タスク
+      </div>
     </div>
   );
 }
