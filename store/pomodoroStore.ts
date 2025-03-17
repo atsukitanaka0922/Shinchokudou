@@ -1,54 +1,53 @@
+/**
+ * ポモドーロタイマー管理ストア
+ * 
+ * ポモドーロテクニックに基づくタイマー機能を提供します。
+ * 作業時間と休憩時間の管理、通知機能、統計情報の連携などを行います。
+ */
+
 import { create } from "zustand";
 import { useFeedbackStore } from "./feedbackStore";
 import { useStatsStore } from "./statsStore";
 
+/**
+ * ポモドーロタイマーの状態定義
+ */
 type PomodoroState = {
-  taskId: string | null;
-  isRunning: boolean;
-  timeLeft: number;
-  isBreak: boolean;
-  pomodoroCount: number;
-  isVisible: boolean;
-  isAlarmPlaying: boolean; // アラーム再生状態を追加
+  taskId: string | null;      // 現在作業中のタスクID
+  isRunning: boolean;         // タイマー実行中かどうか
+  timeLeft: number;           // 残り時間（秒）
+  isBreak: boolean;           // 休憩中かどうか
+  pomodoroCount: number;      // 完了したポモドーロの数
+  isVisible: boolean;         // タイマーUIの表示状態
+  isAlarmPlaying: boolean;    // アラーム再生中かどうか
   
-  // ポモドーロを開始する
+  // アクション
   startPomodoro: (taskId: string) => void;
-  
-  // ポモドーロを停止する
   stopPomodoro: () => void;
-  
-  // 時間を進める（毎秒呼び出される）
   tick: () => void;
-  
-  // バックグラウンドタイマーを開始・停止
   setupBackgroundTimer: () => void;
   clearBackgroundTimer: () => void;
-
-  // テスト用に音を鳴らす
   playTestSound: () => void;
-  
-  // アラームを停止する
   stopAlarm: () => void;
 };
 
-// 作業時間と休憩時間の設定（秒単位）
-const WORK_TIME = 25 * 60; // 25分
-const BREAK_TIME = 5 * 60; // 5分
+// 時間設定（秒単位）
+const WORK_TIME = 25 * 60;  // 25分間の作業時間
+const BREAK_TIME = 5 * 60;  // 5分間の休憩時間
 
-// 開発テスト用に短い時間を設定（コメントアウト）
-// const WORK_TIME = 10; // 10秒
-// const BREAK_TIME = 5; // 5秒
+// 開発テスト用の短い時間設定（必要に応じてコメントを外す）
+// const WORK_TIME = 10;  // 10秒の作業時間
+// const BREAK_TIME = 5;  // 5秒の休憩時間
 
-// グローバルなタイマーIDを保持
+// グローバル変数（ストア外でも状態を保持するため）
 let globalTimerId: NodeJS.Timeout | null = null;
-
-// グローバルなオーディオインスタンス
 let audioInstance: HTMLAudioElement | null = null;
-
-// サウンド再生カウンタ
 let soundPlayCount = 0;
 
-// サウンド通知を再生する関数（Zustandストア内で使用するためのラッパー関数）
+/**
+ * 通知音を再生する関数
+ * @param set Zustand の set 関数
+ */
 const playNotificationSoundWrapper = (set: any) => {
   if (typeof window === 'undefined') return;
 
@@ -61,51 +60,45 @@ const playNotificationSoundWrapper = (set: any) => {
 
     // 新しいオーディオインスタンスを作成
     audioInstance = new Audio("/sounds/bell.mp3");
-    
-    // ボリュームを最大に設定
     audioInstance.volume = 1.0;
-    
-    // 再生回数をリセット
     soundPlayCount = 0;
     
-    // ループ設定（5回再生）
+    // 最大5回の再生ループを設定
     audioInstance.onended = () => {
       if (soundPlayCount < 4 && audioInstance) {
         audioInstance.currentTime = 0;
         audioInstance.play()
           .then(() => {
             soundPlayCount++;
-            // アラーム再生中のフラグをセット
             set({ isAlarmPlaying: true });
           })
           .catch(err => {
-            console.error("オーディオ再生エラー（ループ）:", err);
+            console.error("オーディオ再生エラー:", err);
             set({ isAlarmPlaying: false });
           });
       } else {
-        // 5回再生し終わったらフラグをリセット
         set({ isAlarmPlaying: false });
       }
     };
     
-    // 再生を試みる
+    // 再生を開始
     const playPromise = audioInstance.play();
     if (playPromise !== undefined) {
       playPromise
         .then(() => {
-          // 再生開始時にフラグをセット
           set({ isAlarmPlaying: true });
         })
         .catch(err => {
           console.error("オーディオ再生エラー:", err);
           set({ isAlarmPlaying: false });
-          // フィードバックメッセージを表示（代替通知）
+          
+          // 代替通知としてフィードバックを表示
           const feedbackStore = useFeedbackStore.getState();
           feedbackStore.setMessage("🔔 タイマーが終了しました！");
         });
     }
     
-    // ブラウザ通知も表示
+    // ブラウザ通知を表示（許可されている場合）
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("ポモドーロタイマーが終了しました！", {
         body: "次のステップに進みましょう",
@@ -118,6 +111,9 @@ const playNotificationSoundWrapper = (set: any) => {
   }
 };
 
+/**
+ * ポモドーロタイマーを管理するZustandストア
+ */
 export const usePomodoroStore = create<PomodoroState>((set, get) => ({
   taskId: null,
   isRunning: false,
@@ -125,9 +121,11 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
   isBreak: false,
   pomodoroCount: 0,
   isVisible: false,
-  isAlarmPlaying: false, // アラーム再生状態のデフォルト値
+  isAlarmPlaying: false,
 
-  // アラームを停止する関数
+  /**
+   * アラームを停止
+   */
   stopAlarm: () => {
     if (audioInstance) {
       audioInstance.pause();
@@ -136,28 +134,30 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
     }
     set({ isAlarmPlaying: false });
     
-    // フィードバックメッセージを表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage("アラームを停止しました");
   },
 
-  // テスト用に音を鳴らす関数
+  /**
+   * テスト用に通知音を再生
+   */
   playTestSound: () => {
-    // フィードバックメッセージを表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage("テストサウンドを再生中...");
     
     playNotificationSoundWrapper(set);
   },
 
-  // バックグラウンドタイマーをセットアップ
+  /**
+   * バックグラウンドタイマーをセットアップ
+   */
   setupBackgroundTimer: () => {
     const tick = get().tick;
     
-    // すでにタイマーが動いていれば何もしない
+    // 既存のタイマーが動いていれば何もしない
     if (globalTimerId) return;
     
-    // グローバルなタイマーを設定
+    // 毎秒tickを実行するタイマーを設定
     globalTimerId = setInterval(() => {
       if (get().isRunning) {
         tick();
@@ -169,7 +169,7 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       Notification.requestPermission();
     }
     
-    // オーディオの事前読み込み
+    // サウンド事前読み込み
     if (typeof window !== 'undefined') {
       const preloadAudio = new Audio("/sounds/bell.mp3");
       preloadAudio.preload = "auto";
@@ -177,7 +177,9 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
     }
   },
   
-  // バックグラウンドタイマーをクリア
+  /**
+   * バックグラウンドタイマーを解除
+   */
   clearBackgroundTimer: () => {
     if (globalTimerId) {
       clearInterval(globalTimerId);
@@ -185,8 +187,11 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
     }
   },
 
+  /**
+   * ポモドーロタイマーを開始
+   * @param taskId 作業対象のタスクID
+   */
   startPomodoro: (taskId) => {
-    // フィードバックメッセージを表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage("ポモドーロタイマーを開始しました！");
     
@@ -202,16 +207,19 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
     // バックグラウンドタイマーを開始
     get().setupBackgroundTimer();
     
-    // ユーザーインタラクションを利用してオーディオを事前に初期化
+    // オーディオ初期化（ユーザーインタラクション時に行う必要がある）
     if (typeof window !== 'undefined') {
       const silentAudio = new Audio("/sounds/silence.mp3");
       silentAudio.volume = 0.1;
-      silentAudio.play().catch(err => {
-        console.log("サイレントオーディオの初期化に失敗:", err);
+      silentAudio.play().catch(() => {
+        // エラーは無視（サイレントオーディオは存在しなくても良い）
       });
     }
   },
 
+  /**
+   * ポモドーロタイマーを停止
+   */
   stopPomodoro: () => {
     // アラームが鳴っていたら停止
     if (get().isAlarmPlaying) {
@@ -226,17 +234,19 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       isAlarmPlaying: false
     });
     
-    // フィードバックメッセージを表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage("ポモドーロタイマーを終了しました");
   },
 
+  /**
+   * タイマーの時間を進める（毎秒呼び出される）
+   */
   tick: () => 
     set((state) => {
       if (state.timeLeft > 0) {
         return { timeLeft: state.timeLeft - 1 };
       } else {
-        // タイマーが0になった時
+        // タイマーが0になった時の処理
         if (state.isBreak) {
           // 休憩終了 → 新しいポモドーロ開始
           const feedbackStore = useFeedbackStore.getState();
@@ -251,13 +261,12 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
             isRunning: true 
           };
         } else {
-          // 作業終了 → 休憩開始（ここでポモドーロ統計を更新）
+          // 作業終了 → 休憩開始（統計更新）
           const feedbackStore = useFeedbackStore.getState();
           feedbackStore.setMessage("ポモドーロ完了！休憩タイムです");
           
-          // statsStoreのincrementPomodoroを呼び出す
+          // 統計を更新
           const statsStore = useStatsStore.getState();
-          console.log("✅ 作業時間終了！statsStore.incrementPomodoro() を実行します。");
           statsStore.incrementPomodoro();
           
           // 効果音を再生
@@ -274,15 +283,14 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
     }),
 }));
 
-// ページ読み込み時にバックグラウンドタイマーを自動的に開始
+// ページ読み込み時にバックグラウンドタイマーを開始
 if (typeof window !== 'undefined') {
-  // 小さい遅延を入れて、アプリの初期化後に実行されるようにする
   setTimeout(() => {
     usePomodoroStore.getState().setupBackgroundTimer();
   }, 100);
 }
 
-// ページアンロード時にタイマーをクリーンアップ
+// ページアンロード時にタイマーをクリア
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     usePomodoroStore.getState().clearBackgroundTimer();

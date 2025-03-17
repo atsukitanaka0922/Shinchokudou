@@ -1,22 +1,37 @@
-// 天気情報取得機能
+/**
+ * 天気情報取得モジュール
+ * 
+ * このモジュールでは天気情報の取得と関連ユーティリティを提供します。
+ * 開発環境ではモックデータを使用し、本番環境では実際のAPI接続に切り替えられます。
+ */
 
 export interface WeatherData {
-  temperature: number;
-  description: string;
-  humidity: number;
-  icon: string;
-  condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'stormy' | 'foggy' | 'unknown';
+  temperature: number;        // 気温（摂氏）
+  description: string;        // 天気の説明（日本語）
+  humidity: number;           // 湿度（%）
+  icon: string;               // 天気アイコンのパス
+  condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'stormy' | 'foggy' | 'unknown'; // 天気状態
 }
 
-// 実際のAPIから天気情報を取得する関数
+/**
+ * 天気情報を取得する
+ * 開発環境ではモックデータを返し、本番環境では実際のAPIからデータを取得します
+ */
 export async function fetchWeather(): Promise<WeatherData> {
   try {
     // 実際のAPIを使用する場合はこちらを有効化
+    // const API_KEY = process.env.WEATHER_API_KEY;
     // const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Kyoto&appid=${API_KEY}&units=metric&lang=ja`);
     // const data = await response.json();
-    // 必要なデータを整形して返す処理...
+    // return {
+    //   temperature: Math.round(data.main.temp),
+    //   description: data.weather[0].description,
+    //   humidity: data.main.humidity,
+    //   icon: `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`,
+    //   condition: mapWeatherCondition(data.weather[0].id)
+    // };
 
-    // モックデータを返す（APIキーなしでも動作するように）
+    // 開発用モックデータを返す
     return getMockWeatherData();
   } catch (error) {
     console.error('天気情報取得エラー:', error);
@@ -25,13 +40,16 @@ export async function fetchWeather(): Promise<WeatherData> {
       temperature: 22,
       description: '晴れ',
       humidity: 60,
-      icon: '/icons/sunny.png', // パスを修正：PNGファイル形式を指定
+      icon: '/icons/sunny.png',
       condition: 'sunny'
     };
   }
 }
 
-// ダミーの天気データをランダムに生成する関数（開発用）
+/**
+ * 季節に応じたモックの天気データを生成する
+ * 開発・テスト環境で使用
+ */
 function getMockWeatherData(): WeatherData {
   const conditions: Array<WeatherData['condition']> = ['sunny', 'cloudy', 'rainy', 'snowy', 'stormy', 'foggy', 'unknown'];
   const descriptions = {
@@ -62,7 +80,7 @@ function getMockWeatherData(): WeatherData {
     maxTemp = 20;
   }
   
-  // ランダムな条件を選択（季節に合わせて調整）
+  // 季節に合わせた天気条件の選択
   let conditionIndex;
   if (month >= 6 && month <= 8) { // 夏は晴れや雨が多い
     conditionIndex = Math.floor(Math.random() * 3); // 0, 1, 2 (sunny, cloudy, rainy)
@@ -74,11 +92,9 @@ function getMockWeatherData(): WeatherData {
   }
   
   const condition = conditions[conditionIndex];
+  const icon = `/icons/${condition}.png`;
   
-  // アイコンのパスを修正：PNGファイル形式を使用し、publicディレクトリ直下のiconsフォルダを参照
-  let icon = `/icons/${condition}.png`;
-  
-  // 温度をランダム生成（条件に基づいて調整）
+  // 天気条件に応じた温度の調整
   let temp;
   switch (condition) {
     case 'sunny':
@@ -101,7 +117,7 @@ function getMockWeatherData(): WeatherData {
       temp = Math.round(minTemp + Math.random() * (maxTemp - minTemp));
   }
   
-  // 湿度をランダム生成（条件に基づいて調整）
+  // 天気条件に応じた湿度の調整
   let humidity;
   switch (condition) {
     case 'sunny':
@@ -133,7 +149,11 @@ function getMockWeatherData(): WeatherData {
   };
 }
 
-// 天気と気温に基づいたアクティビティを提案する関数
+/**
+ * 天気と気温に基づいたアクティビティを提案する
+ * @param weather 天気データ
+ * @returns 推奨・非推奨アクティビティのリスト
+ */
 export function suggestWeatherBasedActivities(weather: WeatherData): {
   recommended: string[];
   notRecommended: string[];

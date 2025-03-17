@@ -1,3 +1,10 @@
+/**
+ * AIタスク提案コンポーネント
+ * 
+ * ユーザーの過去のタスク履歴、現在の天気状況などを考慮して
+ * AIがパーソナライズされたタスクを提案するコンポーネント
+ */
+
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useTaskStore } from '@/store/taskStore';
@@ -5,16 +12,24 @@ import { suggestTasks, SuggestedTask } from '@/lib/aiTaskSuggestion';
 import { fetchWeather, WeatherData } from '@/lib/weather';
 import { motion, AnimatePresence } from 'framer-motion';
 
+/**
+ * AIによるタスク提案コンポーネント
+ * 天気情報と連携し、状況に適したタスクを提案する
+ */
 export default function AITaskSuggestions() {
+  // ストアからの状態取得
   const { user } = useAuthStore();
   const { addTask } = useTaskStore();
+  
+  // ローカル状態
   const [suggestions, setSuggestions] = useState<SuggestedTask[]>([]);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
 
+  // コンポーネントマウント時、または認証状態変更時に実行
   useEffect(() => {
-    // 天気情報の取得
+    // 天気情報を取得
     fetchWeather().then(data => {
       setWeather(data);
     });
@@ -25,7 +40,9 @@ export default function AITaskSuggestions() {
     }
   }, [user]);
 
-  // AI提案をロードする関数
+  /**
+   * AI提案をロードする関数
+   */
   const loadSuggestions = async () => {
     if (!user) return;
 
@@ -40,7 +57,10 @@ export default function AITaskSuggestions() {
     }
   };
 
-  // タスクを追加する関数
+  /**
+   * 提案されたタスクをタスクリストに追加する
+   * @param task 追加するタスク情報
+   */
   const handleAddTask = async (task: SuggestedTask) => {
     // 3日後を期限として設定
     const deadline = new Date();
@@ -53,12 +73,18 @@ export default function AITaskSuggestions() {
     setSuggestions(prev => prev.filter(s => s.text !== task.text));
   };
 
-  // 提案を更新する
+  /**
+   * 提案リストを更新する
+   */
   const handleRefresh = () => {
     loadSuggestions();
   };
 
-  // 天気アイコンを取得する（絵文字を使用）
+  /**
+   * 天気状態に対応する絵文字を返す
+   * @param condition 天気状態
+   * @returns 対応する絵文字
+   */
   const getWeatherEmoji = (condition: string) => {
     switch (condition) {
       case 'sunny': return '☀️';
@@ -71,7 +97,7 @@ export default function AITaskSuggestions() {
     }
   };
 
-  // ユーザーがログインしていない場合
+  // ユーザーがログインしていない場合の表示
   if (!user) {
     return (
       <div className="p-4 bg-gray-100 shadow-md rounded-lg">
@@ -81,7 +107,7 @@ export default function AITaskSuggestions() {
     );
   }
 
-  // ローディング中
+  // データ読み込み中の表示
   if (loading) {
     return (
       <div className="p-4 bg-white shadow-md rounded-lg">
@@ -93,6 +119,7 @@ export default function AITaskSuggestions() {
     );
   }
 
+  // メイン表示
   return (
     <div className="p-4 bg-white shadow-md rounded-lg">
       {/* ヘッダー部分 */}
@@ -108,7 +135,7 @@ export default function AITaskSuggestions() {
           </button>
         </div>
         
-        {/* 天気情報の表示（絵文字を使用） */}
+        {/* 天気情報の表示 */}
         {weather && (
           <div className="flex items-center text-sm text-gray-700 mr-2">
             <span className="mr-1">{getWeatherEmoji(weather.condition)}</span>
@@ -117,6 +144,7 @@ export default function AITaskSuggestions() {
           </div>
         )}
         
+        {/* 更新ボタン */}
         <button
           onClick={handleRefresh}
           className="p-1 text-blue-500 hover:text-blue-700"
@@ -126,7 +154,7 @@ export default function AITaskSuggestions() {
         </button>
       </div>
 
-      {/* 情報表示エリア */}
+      {/* 情報表示エリア - アニメーション付き */}
       <AnimatePresence>
         {showInfo && (
           <motion.div
@@ -149,7 +177,7 @@ export default function AITaskSuggestions() {
         )}
       </AnimatePresence>
 
-      {/* 天気サマリー表示（絵文字を使用） */}
+      {/* 天気サマリー表示 */}
       {weather && !showInfo && (
         <div className="mb-4 p-3 bg-gray-50 rounded-md flex items-center">
           <div className="mr-3 text-3xl">{getWeatherEmoji(weather.condition)}</div>

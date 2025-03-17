@@ -1,3 +1,10 @@
+/**
+ * タスク管理ストア
+ * 
+ * Zustandを使用したタスク管理のためのグローバルステート管理
+ * タスクの追加・削除・更新などの機能とFirestoreとの連携を提供
+ */
+
 import { create } from "zustand";
 import { db } from "@/lib/firebase";
 import { 
@@ -16,18 +23,24 @@ import { usePomodoroStore } from "@/store/pomodoroStore";
 import { useFeedbackStore } from "@/store/feedbackStore";
 import { PriorityLevel } from "@/lib/aiPriorityAssignment";
 
-type Task = {
-  id: string;
-  text: string;
-  completed: boolean;
-  completedAt?: number | null;
-  userId: string;
-  deadline?: string;
-  order: number;
-  priority: PriorityLevel; // 優先度フィールドを追加
-  createdAt?: number;      // 作成日時を追加
+/**
+ * タスクのインターフェース定義
+ */
+export type Task = {
+  id: string;               // タスクのユニークID
+  text: string;             // タスクの内容
+  completed: boolean;       // 完了状態
+  completedAt?: number | null; // 完了日時のタイムスタンプ
+  userId: string;           // 所有ユーザーID
+  deadline?: string;        // 期限（YYYY-MM-DD形式）
+  order: number;            // 表示順序
+  priority: PriorityLevel;  // 優先度（high/medium/low）
+  createdAt?: number;       // 作成日時のタイムスタンプ
 };
 
+/**
+ * タスクストアの状態とアクション定義
+ */
 interface TaskState {
   tasks: Task[];
   loadTasks: () => void;
@@ -35,19 +48,20 @@ interface TaskState {
   removeTask: (taskId: string) => Promise<void>;
   toggleCompleteTask: (taskId: string) => Promise<void>;
   setDeadline: (taskId: string, deadline: string) => Promise<void>;
-  setPriority: (taskId: string, priority: PriorityLevel) => Promise<void>; // 優先度設定メソッドを追加
+  setPriority: (taskId: string, priority: PriorityLevel) => Promise<void>;
   moveTaskUp: (taskId: string) => void;
   moveTaskDown: (taskId: string) => void;
   startPomodoro: (taskId: string) => void;
-  clearTasks: () => void; // ログアウト時にタスクをリセット
-  reorderTasks: (sourceIndex: number, destinationIndex: number) => Promise<void>; // ドラッグ&ドロップ用
+  clearTasks: () => void;
+  reorderTasks: (sourceIndex: number, destinationIndex: number) => Promise<void>;
 }
 
-// タスク完了時の効果音を再生する関数
+/**
+ * タスク完了時の効果音を再生
+ */
 const playTaskCompletionSound = () => {
   if (typeof window !== 'undefined') {
     try {
-      // サウンドファイルがあることを前提とします
       const audio = new Audio("/sounds/task-complete.mp3");
       audio.play().catch(err => console.log("オーディオ再生エラー:", err));
     } catch (error) {
@@ -56,26 +70,32 @@ const playTaskCompletionSound = () => {
   }
 };
 
-// グローバルイベントを発火する関数
+/**
+ * ポモドーロタブを開くイベントを発火
+ */
 const openPomodoroTab = () => {
   if (typeof window !== 'undefined') {
-    // カスタムイベントを発火してポモドーロタブを開く
     window.dispatchEvent(new CustomEvent('openPomodoroTab'));
   }
 };
 
+/**
+ * Zustandを使用したタスク管理ストアの作成
+ */
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
 
+  /**
+   * ユーザーのタスクをFirestoreから読み込む
+   */
   loadTasks: async () => {
     const user = useAuthStore.getState().user;
     if (!user) {
-      console.log("🚨 ユーザーがログインしていないため、タスクを取得できません");
+      console.log("ユーザーがログインしていないため、タスクを取得できません");
       set({ tasks: [] });
       return;
     }
 
-    console.log(`🔍 Firestore からユーザー ${user.uid} のタスクを取得`);
     const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
     const snapshot = await getDocs(q);
 
@@ -84,10 +104,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     // orderフィールドで並べ替え
     tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
     
-    console.log("✅ Firestore からタスク取得成功:", tasks);
     set({ tasks });
   },
 
+  /**
+   * 新しいタスクを追加
+   * @param text タスクの内容
+   * @param deadline 期限（オプション）
+   * @param priority 優先度（デフォルトはmedium）
+   */
   addTask: async (text, deadline, priority = 'medium') => {
     const user = useAuthStore.getState().user;
     if (!user) return;
@@ -99,21 +124,23 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       completedAt: null,
       userId: user.uid,
       order: tasks.length + 1,
-      priority, // 優先度を設定
-      createdAt: Date.now(), // 作成日時を設定
+      priority,
+      createdAt: Date.now(),
       ...(deadline ? { deadline } : {}),
     };
 
     const docRef = await addDoc(collection(db, "tasks"), newTask);
     set((state) => ({ tasks: [...state.tasks, { id: docRef.id, ...newTask }] }));
     
-    // フィードバックメッセージを表示
+    // フィードバック表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage(`タスク「${text}」を追加しました`);
-    
-    console.log("✅ Firestore にタスク追加:", newTask);
   },
 
+  /**
+   * タスクを削除
+   * @param taskId 削除するタスクのID
+   */
   removeTask: async (taskId) => {
     const task = get().tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -121,13 +148,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     await deleteDoc(doc(db, "tasks", taskId));
     set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
     
-    // フィードバックメッセージを表示
+    // フィードバック表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage(`タスク「${task.text}」を削除しました`);
-    
-    console.log("🗑️ タスク削除:", taskId);
   },
 
+  /**
+   * タスクの完了状態を切り替え
+   * @param taskId 対象のタスクID
+   */
   toggleCompleteTask: async (taskId) => {
     const task = get().tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -147,14 +176,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // 効果音を再生
       playTaskCompletionSound();
       
-      // フィードバックメッセージを表示
+      // フィードバック表示
       const feedbackStore = useFeedbackStore.getState();
       feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！`);
     }
-
-    console.log(`✅ タスク ${taskId} を ${newCompleted ? "完了" : "未完了"} に変更`);
   },
 
+  /**
+   * タスクの期限を設定
+   * @param taskId 対象のタスクID
+   * @param deadline 期限（YYYY-MM-DD形式）
+   */
   setDeadline: async (taskId, deadline) => {
     const task = get().tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -166,14 +198,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       ),
     }));
     
-    // フィードバックメッセージを表示
+    // フィードバック表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage(`タスク「${task.text}」の期限を設定しました`);
-    
-    console.log(`📅 タスク ${taskId} の締め切りを更新: ${deadline}`);
   },
 
-  // 優先度設定メソッド
+  /**
+   * タスクの優先度を設定
+   * @param taskId 対象のタスクID
+   * @param priority 優先度（high/medium/low）
+   */
   setPriority: async (taskId, priority) => {
     const task = get().tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -185,13 +219,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       ),
     }));
     
-    // フィードバックメッセージを表示
+    // フィードバック表示
     const feedbackStore = useFeedbackStore.getState();
     feedbackStore.setMessage(`タスク「${task.text}」の優先度を「${priority}」に設定しました`);
-    
-    console.log(`🔔 タスク ${taskId} の優先度を更新: ${priority}`);
   },
 
+  /**
+   * タスクを上に移動（表示順を上げる）
+   * @param taskId 対象のタスクID
+   */
   moveTaskUp: (taskId) => {
     set((state) => {
       const index = state.tasks.findIndex((task) => task.id === taskId);
@@ -210,9 +246,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       return { tasks };
     });
-    console.log(`🔼 タスク ${taskId} を上に移動`);
   },
 
+  /**
+   * タスクを下に移動（表示順を下げる）
+   * @param taskId 対象のタスクID
+   */
   moveTaskDown: (taskId) => {
     set((state) => {
       const index = state.tasks.findIndex((task) => task.id === taskId);
@@ -231,14 +270,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       return { tasks };
     });
-    console.log(`🔽 タスク ${taskId} を下に移動`);
   },
 
+  /**
+   * タスクのポモドーロタイマーを開始
+   * @param taskId 対象のタスクID
+   */
   startPomodoro: (taskId) => {
     const task = get().tasks.find((t) => t.id === taskId);
     if (!task) return;
-
-    console.log(`⏳ ポモドーロ開始: ${task.text}`);
     
     // PomodoroStore の startPomodoro メソッドを呼び出し
     const pomodoroStore = usePomodoroStore.getState();
@@ -248,12 +288,18 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     openPomodoroTab();
   },
 
+  /**
+   * タスクリストをクリア（主にログアウト時に使用）
+   */
   clearTasks: () => {
     set({ tasks: [] });
-    console.log("🚪 ログアウトしたため、タスクをリセット");
   },
   
-  // ドラッグ&ドロップによるタスクの並べ替え
+  /**
+   * ドラッグ&ドロップによるタスクの並べ替え
+   * @param sourceIndex 元の位置のインデックス
+   * @param destinationIndex 移動先のインデックス
+   */
   reorderTasks: async (sourceIndex, destinationIndex) => {
     const user = useAuthStore.getState().user;
     if (!user) return;
@@ -280,6 +326,5 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     });
     
     await batch.commit();
-    console.log("✅ タスクの並び順を更新しました");
   }
 }));

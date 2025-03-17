@@ -1,27 +1,42 @@
+/**
+ * BGM（バックグラウンドミュージック）管理ストア
+ * 
+ * アプリケーションでのBGM再生を管理するZustandストア
+ * 音楽の再生/停止制御や音量調整機能を提供
+ */
+
 import { create } from "zustand";
 
-// BGMの状態管理ストア
+/**
+ * BGM状態の型定義
+ */
 interface BGMState {
-  isPlaying: boolean;
-  volume: number;
-  audioElement: HTMLAudioElement | null;
+  isPlaying: boolean;           // 再生中かどうか
+  volume: number;               // 音量（0.0〜1.0）
+  audioElement: HTMLAudioElement | null;  // オーディオ要素
   
   // アクション
-  initialize: () => void;
-  togglePlay: () => void;
-  setVolume: (volume: number) => void;
-  cleanup: () => void;
+  initialize: () => void;       // 初期化
+  togglePlay: () => void;       // 再生/停止切り替え
+  setVolume: (volume: number) => void;  // 音量設定
+  cleanup: () => void;          // リソース解放
 }
 
-// シングルトンのオーディオインスタンスを作成
+// シングルトンのオーディオインスタンス
 let audioInstance: HTMLAudioElement | null = null;
 
+/**
+ * BGM管理Zustandストア
+ */
 export const useBGMStore = create<BGMState>((set, get) => ({
   isPlaying: false,
   volume: 0.5,
   audioElement: null,
   
-  // 初期化処理
+  /**
+   * BGM機能の初期化
+   * ローカルストレージから設定を読み込み、オーディオインスタンスを作成
+   */
   initialize: () => {
     // すでに初期化済みならスキップ
     if (get().audioElement) return;
@@ -61,7 +76,9 @@ export const useBGMStore = create<BGMState>((set, get) => ({
     });
   },
   
-  // 再生/停止を切り替え
+  /**
+   * 再生/停止を切り替え
+   */
   togglePlay: () => {
     const { audioElement, isPlaying } = get();
     if (!audioElement) return;
@@ -84,7 +101,10 @@ export const useBGMStore = create<BGMState>((set, get) => ({
     localStorage.setItem("bgmPlaying", String(newPlayingState));
   },
   
-  // 音量を設定
+  /**
+   * 音量を設定
+   * @param volume 音量（0.0〜1.0）
+   */
   setVolume: (volume: number) => {
     const { audioElement } = get();
     if (!audioElement) return;
@@ -96,7 +116,9 @@ export const useBGMStore = create<BGMState>((set, get) => ({
     localStorage.setItem("bgmVolume", String(volume));
   },
   
-  // クリーンアップ（未使用）
+  /**
+   * リソースを解放（主にテスト用）
+   */
   cleanup: () => {
     const { audioElement } = get();
     if (audioElement) {
@@ -109,9 +131,9 @@ export const useBGMStore = create<BGMState>((set, get) => ({
   }
 }));
 
-// BGMストアの初期化処理を実行
+// ブラウザ環境でのみ初期化処理を実行
 if (typeof window !== 'undefined') {
-  // 小さい遅延を入れて、アプリの初期化後に実行されるようにする
+  // アプリの初期化後に実行するために小さな遅延を設定
   setTimeout(() => {
     useBGMStore.getState().initialize();
   }, 100);
