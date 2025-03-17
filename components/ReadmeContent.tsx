@@ -127,11 +127,22 @@ export default function ReadmeContent() {
       </div>
       
       <h3 className="text-lg font-semibold mt-4 mb-2">🔄 更新履歴</h3>
+
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
+          <div>
+            <p className="font-medium">v1.2.2 (最新)</p>
+            <ul className="list-disc pl-5">
+              <li>スマホ版で締め切り間近のタスクがあると動かなくなる不具合の修正</li>
+            </ul>
+          </div>
+        </div>
+      </div>
       
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium">v1.2.5 (最新)</p>
+            <p className="font-medium">v1.2.1 </p>
             <ul className="list-disc pl-5">
               <li>ポモドーロタイマーにアラーム停止ボタンを追加</li>
               <li>サウンド再生機能の信頼性向上</li>
@@ -139,7 +150,7 @@ export default function ReadmeContent() {
           </div>
           
           <div>
-            <p className="font-medium">v1.2.4</p>
+            <p className="font-medium">v1.2.0 </p>
             <ul className="list-disc pl-5">
               <li>AIタスク提案機能の追加</li>
               <li>機械学習による自動優先度設定</li>
