@@ -6,17 +6,17 @@ import { useDevice } from "@/hooks/useDevice";
 
 // コンポーネントのインポート
 import AddTaskWithPriority from "@/components/AddTaskWithPriority"; // AI優先度機能付きタスク追加
-import TaskListWithPriority from "@/components/TaskListWithPriority"; // 優先度表示付きタスクリスト
 import AITaskSuggestions from "@/components/AITaskSuggestions"; // AIタスク提案（天気機能付き）
-import AppLogo from "@/components/AppLogo";
-import Dashboard from "@/components/Dashboard";
-import Feedback from "@/components/Feedback";
-import TaskStats from "@/components/TaskStats";
-import PomodoroStats from "@/components/PomodoroStats";
-import Weather from "@/components/Weather";
-import AuthButton from "@/components/AuthButton";
-import DeadlineWarning from "@/components/DeadlineWarning";
-import FloatingMenu from "@/components/FloatingMenu";
+import AppLogo from "@/components/AppLogo"; // ロゴ
+import AuthButton from "@/components/AuthButton"; // ログインボタン
+import Dashboard from "@/components/Dashboard"; // 今日の予定
+import DeadlineWarning from "@/components/DeadlineWarning"; // 締め切り通知
+import Feedback from "@/components/Feedback"; // タスク関連の通知
+import FloatingMenu from "@/components/FloatingMenu"; // 設定タブ
+import PomodoroStats from "@/components/PomodoroStats"; // ポモドーロ統計
+import TaskListWithPriority from "@/components/TaskListWithPriority"; // 優先度表示付きタスクリスト
+import TaskStats from "@/components/TaskStats"; // タスク完了率
+import Weather from "@/components/Weather"; // 今日の天気
 
 export default function Home() {
   const { loadTasks } = useTaskStore();
