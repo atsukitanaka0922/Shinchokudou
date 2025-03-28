@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useTaskStore } from '@/store/taskStore';
 import { suggestTasks, SuggestedTask } from '@/lib/aiTaskSuggestion';
-import { fetchWeather, WeatherData } from '@/lib/weather';
+import { useWeatherStore, fetchWeather } from '@/lib/weatherService';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -20,25 +20,31 @@ export default function AITaskSuggestions() {
   // ストアからの状態取得
   const { user } = useAuthStore();
   const { addTask } = useTaskStore();
+  const { data: weatherFromStore } = useWeatherStore();
   
   // ローカル状態
   const [suggestions, setSuggestions] = useState<SuggestedTask[]>([]);
-  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weather, setWeather] = useState(weatherFromStore);
   const [loading, setLoading] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
 
   // コンポーネントマウント時、または認証状態変更時に実行
   useEffect(() => {
     // 天気情報を取得
-    fetchWeather().then(data => {
-      setWeather(data);
-    });
+    async function getWeather() {
+      const weatherData = await fetchWeather();
+      setWeather(weatherData);
+    }
+    
+    if (!weather) {
+      getWeather();
+    }
     
     // ユーザーがログインしている場合のみ提案を取得
     if (user) {
       loadSuggestions();
     }
-  }, [user]);
+  }, [user, weather]);
 
   /**
    * AI提案をロードする関数

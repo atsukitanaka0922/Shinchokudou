@@ -5,7 +5,7 @@
  * 過去のタスク履歴、時間帯、天気条件などを考慮します
  */
 
-import { fetchWeather } from '@/lib/weather';
+import { fetchWeather } from '@/lib/weatherService';
 import { PriorityLevel } from './aiPriorityAssignment';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
@@ -28,7 +28,6 @@ export interface SuggestedTask {
 const taskCategories = [
   '仕事', '勉強', '健康', '家事', '趣味', '買い物', '自己啓発'
 ];
-
 /**
  * 天気ごとのタスク提案
  */
@@ -104,9 +103,46 @@ const weatherBasedTasks: { [key: string]: SuggestedTask[] } = {
       estimatedTime: 45,
       weatherRelevant: true
     }
+  ],
+  stormy: [
+    {
+      text: '家での作業を整理する',
+      reason: '荒天時は安全のため室内で過ごしましょう',
+      priority: 'medium',
+      category: '家事',
+      estimatedTime: 30,
+      weatherRelevant: true
+    },
+    {
+      text: '緊急時の備えを確認する',
+      reason: '備蓄品や避難経路を確認しておくと安心です',
+      priority: 'high',
+      category: '家事',
+      estimatedTime: 20,
+      weatherRelevant: true
+    }
+  ],
+  foggy: [
+    {
+      text: '室内でのリラックスタイムを取る',
+      reason: '霧の日は視界が悪いので、室内でゆっくり過ごしましょう',
+      priority: 'low',
+      category: '健康',
+      estimatedTime: 45,
+      weatherRelevant: true
+    }
+  ],
+  unknown: [
+    {
+      text: '今日のスケジュールを確認する',
+      reason: '一日の計画を立てて効率的に過ごしましょう',
+      priority: 'medium',
+      category: '仕事',
+      estimatedTime: 15,
+      weatherRelevant: false
+    }
   ]
 };
-
 /**
  * 基本的なタスク提案
  */
@@ -233,7 +269,6 @@ const getTimeBasedTasks = (): SuggestedTask[] => {
     ];
   }
 };
-
 /**
  * 過去のタスク履歴からユーザーの習慣を分析
  * @param userId ユーザーID
@@ -329,7 +364,6 @@ const analyzeUserHabits = async (userId: string): Promise<SuggestedTask[]> => {
     return [];
   }
 };
-
 /**
  * ユーザーに合わせたタスク提案を生成
  * @param userId ユーザーID

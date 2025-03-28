@@ -155,6 +155,20 @@ export default function ReadmeContent() {
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
+            <p className="font-medium">v1.3.1</p>
+            <ul className="list-disc pl-5">
+              <li>iOSダークモード時のテキスト表示問題を修正</li>
+              <li>天気データの統合サービスを実装し、タスク提案とダッシュボードの天気表示を同期</li>
+              <li>天気に基づくタスク提案の精度向上（霧、嵐などの天気状態に対応）</li>
+              <li>天気データキャッシュ機能の追加によるパフォーマンス改善</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
+          <div>
             <p className="font-medium">v1.3.0</p>
             <ul className="list-disc pl-5">
               <li>UIの大幅改善</li>
@@ -239,7 +253,7 @@ export default function ReadmeContent() {
       
       {/* フッターと著作権表示 */}
       <p className="text-center text-xs text-gray-500 mt-6">
-        &copy; 2025 Shinchokudou AI - 生産性向上のためのタスク管理ソリューション
+        &copy; 2025 進捗堂
       </p>
     </div>
   );

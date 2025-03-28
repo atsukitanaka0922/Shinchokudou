@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { fetchWeather } from "@/lib/weather";
+import { fetchWeather, useWeatherStore } from "@/lib/weatherService";
 import Image from 'next/image';
 
 /**
@@ -14,18 +14,21 @@ import Image from 'next/image';
  * 天気情報をカードスタイルで表示します
  */
 export default function Weather() {
-  // 天気情報の状態
-  const [weather, setWeather] = useState<{ 
-    temperature: number; 
-    description: string; 
-    humidity: number; 
-    icon: string 
-  } | null>(null);
+  // 天気ストアから状態を取得
+  const { data: storeData, loading } = useWeatherStore();
+  const [weather, setWeather] = useState(storeData);
 
   // コンポーネントマウント時に天気情報を取得
   useEffect(() => {
-    fetchWeather().then(setWeather);
-  }, []);
+    async function getWeather() {
+      const weatherData = await fetchWeather();
+      setWeather(weatherData);
+    }
+    
+    if (!weather) {
+      getWeather();
+    }
+  }, [weather]);
 
   // データ読み込み中の表示
   if (!weather) return <p className="text-gray-600">天気情報を取得中...</p>;

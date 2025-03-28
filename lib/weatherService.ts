@@ -1,21 +1,22 @@
 /**
- * 天気サービスモジュール
+ * 統合天気サービスモジュール
  * 
- * このモジュールは天気データの取得と生成のための機能を提供します。
- * 開発環境では詳細なモックデータを生成し、本番環境では外部APIに接続します。
+ * アプリケーション全体で一貫した天気情報を提供するための中央サービス
+ * 天気データのキャッシュと単一情報源としての役割を果たします
  */
+
+import { create } from 'zustand';
 
 /**
  * 天気データのインターフェース
- * アプリケーションで使用される詳細な天気情報の定義
+ * アプリケーションで使用される統一された天気情報の定義
  */
 export interface WeatherData {
   temperature: number;   // 気温（摂氏）
   humidity: number;      // 湿度（%）
-  weather: string;       // 天気の種類 ('sunny', 'cloudy', 'rainy', 'snowy' など)
+  condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'stormy' | 'foggy' | 'unknown'; // 天気状態
   description: string;   // 天気の詳細説明
   icon: string;          // 天気アイコンのURL
-  city: string;          // 都市名
   isHot: boolean;        // 暑いかどうか (26度以上)
   isCold: boolean;       // 寒いかどうか (10度以下)
   isHumid: boolean;      // 湿度が高いかどうか (70%以上)
@@ -25,10 +26,20 @@ export interface WeatherData {
 }
 
 /**
+ * 天気ストアの状態とアクション定義
+ */
+interface WeatherState {
+  data: WeatherData | null;    // 現在の天気データ
+  loading: boolean;            // データ読み込み中フラグ
+  lastFetched: number | null;  // 最後にデータを取得した時刻
+  fetchWeather: () => Promise<WeatherData>; // 天気データを取得する関数
+}
+
+/**
  * 日付をシードとした季節に応じたモックの天気データを生成
  * 開発・テスト環境で使用
  */
-export const getMockWeatherData = (): WeatherData => {
+const getMockWeatherData = (): WeatherData => {
   // 今日の日付から疑似的なランダム値を生成（同じ日なら同じ値）
   const today = new Date();
   const dateKey = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
@@ -69,35 +80,39 @@ export const getMockWeatherData = (): WeatherData => {
   const temperature = baseTemp + rand(-tempVariation, tempVariation);
   
   // 湿度を生成
-  let humidity = rand(30, 90);
+  const humidity = rand(30, 90);
   
   // 天気を決定（温度と湿度に基づく）
-  let weather, description, icon, isRainy, isOutdoorOK;
+  let condition: WeatherData['condition'];
+  let description: string;
+  let icon: string;
+  let isRainy: boolean;
+  let isOutdoorOK: boolean;
   
   if (humidity > 75) {
     if (temperature < 2) {
-      weather = 'snowy';
+      condition = 'snowy';
       description = '雪';
-      icon = 'https://openweathermap.org/img/wn/13d@2x.png';
+      icon = '/icons/snowy.png';
       isRainy = true;
       isOutdoorOK = false;
     } else {
-      weather = 'rainy';
+      condition = 'rainy';
       description = '雨';
-      icon = 'https://openweathermap.org/img/wn/09d@2x.png';
+      icon = '/icons/rainy.png';
       isRainy = true;
       isOutdoorOK = false;
     }
   } else if (humidity > 60) {
-    weather = 'cloudy';
+    condition = 'cloudy';
     description = '曇り';
-    icon = 'https://openweathermap.org/img/wn/03d@2x.png';
+    icon = '/icons/cloudy.png';
     isRainy = false;
     isOutdoorOK = true;
   } else {
-    weather = 'sunny';
+    condition = 'sunny';
     description = '晴れ';
-    icon = 'https://openweathermap.org/img/wn/01d@2x.png';
+    icon = '/icons/sunny.png';
     isRainy = false;
     isOutdoorOK = true;
   }
@@ -106,10 +121,9 @@ export const getMockWeatherData = (): WeatherData => {
   return {
     temperature,
     humidity,
-    weather,
+    condition,
     description,
     icon,
-    city: '京都市',
     isHot: temperature >= 26,
     isCold: temperature <= 10,
     isHumid: humidity >= 70,
@@ -120,39 +134,145 @@ export const getMockWeatherData = (): WeatherData => {
 };
 
 /**
- * 天気データを取得する関数
- * 将来的には実際の天気APIを呼び出す機能を実装予定
+ * 天気管理Zustandストア
+ * アプリケーション全体で一貫した天気データを提供
  */
-export const getWeatherData = async (): Promise<WeatherData> => {
-  try {
-    // TODO: 将来的にはここで実際のAPIを呼び出す
-    // const API_KEY = process.env.WEATHER_API_KEY;
-    // const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Kyoto&appid=${API_KEY}&units=metric&lang=ja`);
-    // const data = await response.json();
-    // return {
-    //   temperature: Math.round(data.main.temp),
-    //   ...その他のデータマッピング
-    // };
+export const useWeatherStore = create<WeatherState>((set, get) => ({
+  data: null,
+  loading: false,
+  lastFetched: null,
+  
+  /**
+   * 天気データを取得（キャッシュ付き）
+   * 最後の取得から30分以内のリクエストはキャッシュを使用
+   */
+  fetchWeather: async () => {
+    const { data, lastFetched, loading } = get();
+    const now = Date.now();
     
-    // 開発用モックデータを返す
-    return getMockWeatherData();
-  } catch (error) {
-    console.error('天気データの取得に失敗:', error);
+    // 30分（1800000ミリ秒）以内に取得済みで、データがある場合はキャッシュを返す
+    if (data && lastFetched && now - lastFetched < 1800000 && !loading) {
+      return data;
+    }
     
-    // エラー時のフォールバック
-    return {
-      temperature: 22,
-      humidity: 50,
-      weather: 'cloudy',
-      description: '曇り (デフォルト)',
-      icon: 'https://openweathermap.org/img/wn/03d@2x.png',
-      city: '京都市',
-      isHot: false,
-      isCold: false,
-      isHumid: false,
-      isDry: false,
-      isRainy: false,
-      isOutdoorOK: true
-    };
+    // 取得中ならフラグを立てる
+    set({ loading: true });
+    
+    try {
+      // TODO: 将来的にはここで実際のAPIを呼び出す
+      // const API_KEY = process.env.WEATHER_API_KEY;
+      // const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Kyoto&appid=${API_KEY}&units=metric&lang=ja`);
+      // const apiData = await response.json();
+      // const weatherData = {
+      //   temperature: Math.round(apiData.main.temp),
+      //   ...その他のデータマッピング
+      // };
+      
+      // 開発用モックデータを生成
+      const weatherData = getMockWeatherData();
+      
+      // ストアを更新してキャッシュする
+      set({ data: weatherData, lastFetched: now, loading: false });
+      return weatherData;
+      
+    } catch (error) {
+      console.error('天気データの取得に失敗:', error);
+      
+      // エラー時はデフォルトデータを返す
+      const defaultData: WeatherData = {
+        temperature: 22,
+        humidity: 50,
+        condition: 'sunny',
+        description: '晴れ (デフォルト)',
+        icon: '/icons/sunny.png',
+        isHot: false,
+        isCold: false,
+        isHumid: false,
+        isDry: false,
+        isRainy: false,
+        isOutdoorOK: true
+      };
+      
+      set({ data: defaultData, lastFetched: now, loading: false });
+      return defaultData;
+    }
   }
-};
+}));
+
+/**
+ * ライブラリに互換性のあるインターフェースを提供するラッパー関数
+ * 既存の fetchWeather 関数の使用コードに影響を与えずに統合を可能にする
+ */
+export async function fetchWeather() {
+  return useWeatherStore.getState().fetchWeather();
+}
+
+/**
+ * 天気と気温に基づいたアクティビティを提案する
+ * @param weather 天気データ
+ * @returns 推奨・非推奨アクティビティのリスト
+ */
+export function suggestWeatherBasedActivities(weather: WeatherData): {
+  recommended: string[];
+  notRecommended: string[];
+} {
+  const recommended: string[] = [];
+  const notRecommended: string[] = [];
+  
+  // 天気条件に基づく提案
+  switch (weather.condition) {
+    case 'sunny':
+      recommended.push('屋外でのウォーキング', '公園での読書', 'ピクニック');
+      if (weather.temperature > 28) {
+        recommended.push('水分補給を頻繁に行う', '日焼け止めを塗る');
+        notRecommended.push('長時間の屋外活動', '激しい運動');
+      }
+      break;
+      
+    case 'cloudy':
+      recommended.push('屋外でのジョギング', '自転車での移動', '写真撮影');
+      break;
+      
+    case 'rainy':
+      recommended.push('室内での読書', '映画鑑賞', '部屋の掃除', 'オンライン学習');
+      notRecommended.push('洗濯物を外に干す', '屋外でのイベント');
+      break;
+      
+    case 'snowy':
+      recommended.push('温かい飲み物を飲む', '室内でのエクササイズ', 'プログラミング学習');
+      notRecommended.push('車での長距離移動', '薄着での外出');
+      break;
+      
+    case 'stormy':
+      recommended.push('家での作業', '料理', '備蓄品の確認');
+      notRecommended.push('外出', '電子機器の使用（雷の場合）');
+      break;
+      
+    case 'foggy':
+      recommended.push('短距離の散歩', '瞑想', '読書');
+      notRecommended.push('車の運転', '自転車');
+      break;
+      
+    default:
+      recommended.push('通常の活動');
+  }
+  
+  // 気温に基づく提案
+  if (weather.temperature < 10) {
+    recommended.push('暖かい服装を心がける', '温かい食事を摂る');
+    notRecommended.push('冷たい飲み物の過剰摂取');
+  } else if (weather.temperature > 30) {
+    recommended.push('こまめな水分補給', '涼しい場所での活動');
+    notRecommended.push('長時間の直射日光下での活動', '激しい運動');
+  }
+  
+  // 湿度に基づく提案
+  if (weather.humidity > 80) {
+    recommended.push('こまめな服の着替え', '除湿機の使用', '軽装での活動');
+    notRecommended.push('激しい運動', '長時間の屋外活動');
+  } else if (weather.humidity < 40) {
+    recommended.push('こまめな水分補給', '保湿ケア');
+  }
+  
+  return { recommended, notRecommended };
+}
