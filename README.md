@@ -1,40 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# 進捗堂 (Shinchokudou) - AI搭載タスク管理アプリ
 
-## Getting Started
+<div align="center">
+  <img src="public/logo.png" alt="進捗堂ロゴ" width="200"/>
+  <p>生産性向上のためのAI搭載タスク管理ソリューション</p>
+</div>
 
-First, run the development server:
+## 📱 概要
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**進捗堂**（Shinchokudou）は、AIを活用した次世代のタスク管理＆ポモドーロアプリです。ユーザーの習慣、天気、時間帯などを考慮し、パーソナライズされたタスク提案を提供します。シンプルなUIと強力な機能を組み合わせ、生産性向上をサポートします。
+
+## ✨ 主要機能
+
+### 🤖 AIタスク提案
+- ユーザーの過去のタスク履歴を分析
+- 現在の天気状況に基づいたタスク提案
+- 時間帯に最適化されたアクティビティの推奨
+
+### 📊 AIによる優先度設定
+- タスクのコンテンツから自動的に優先度を判定
+- キーワード分析による重要度の判別
+- 期限との組み合わせによる最適な優先順位付け
+
+### ⏱️ ポモドーロタイマー
+- 25分の作業/5分の休憩のサイクル管理
+- タスクに直接リンクされたタイマー
+- 通知とサウンドアラート機能
+
+### 🌤️ 天気連携
+- 現在の天気に基づいたタスク提案
+- 屋内/屋外活動の最適化
+- 天気変化に応じた行動推奨
+
+### 📅 デッドライン管理
+- 期限切れや期限間近のタスクの視覚的警告
+- タスク期限の簡単な設定と管理
+- ダッシュボードで今日の締め切りを一目で把握
+
+### 🎵 BGMプレイヤー
+- 集中力を高める環境音楽
+- ボリューム調整可能
+- バックグラウンド再生対応
+
+## 🛠️ 技術スタック
+
+- **フロントエンド**: Next.js, React, TypeScript
+- **スタイリング**: Tailwind CSS, Framer Motion
+- **状態管理**: Zustand
+- **バックエンド**: Firebase (Authentication, Firestore)
+- **デプロイ**: Vercel
+
+## 📦 プロジェクト構造
+
+```
+/
+├── components/         # Reactコンポーネント
+├── hooks/              # カスタムReactフック
+├── lib/                # ユーティリティ関数・サービス
+├── pages/              # Next.jsページコンポーネント
+├── public/             # 静的アセット
+├── store/              # Zustandストア定義
+└── styles/             # グローバルCSS定義
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 開発環境のセットアップ
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+### 前提条件
+- Node.js 16.x以上
+- npm または yarn
+- Firebase プロジェクト
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+### インストール
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+```bash
+# リポジトリのクローン
+git clone https://github.com/yourusername/shinchokudou.git
+cd shinchokudou
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 依存関係のインストール
+npm install
+# または
+yarn install
 
-## Learn More
+# .env.localファイルをプロジェクトルートに作成し、必要な環境変数を設定
+# Firebase設定
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
-To learn more about Next.js, take a look at the following resources:
+# 開発サーバーの起動
+npm run dev
+# または
+yarn dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+## 🔄 更新履歴
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### v1.3.1
+- iOSダークモード時のテキスト表示問題を修正
+- 天気データの統合サービスを実装し、タスク提案とダッシュボードの天気表示を同期
+- 天気に基づくタスク提案の精度向上（霧、嵐などの天気状態に対応）
+- 天気データキャッシュ機能の追加によるパフォーマンス改善
 
-## Deploy on Vercel
+### v1.3.0
+- UIの大幅改善
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### v1.2.2
+- スマホ版で締め切り間近のタスクがあると動かなくなる不具合の修正
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+### v1.2.1
+- ポモドーロタイマーにアラーム停止ボタンを追加
+- サウンド再生機能の信頼性向上
+
+### v1.2.0
+- AIタスク提案機能の追加
+- 機械学習による自動優先度設定
+- ポモドーロタイマーのサウンド修正
+- アプリ説明（README）の追加
+- 天気に基づくタスク提案機能
+- ロゴの追加
+
+### v1.1.0
+- タブ型UIの導入
+- BGMプレイヤーの追加
+- バックグラウンド実行の対応
+
+### v1.0.0
+- 初回リリース
+- 基本的なタスク管理
+- ポモドーロタイマー
+
+## 🤝 貢献
+
+貢献は大歓迎です！バグ報告、機能リクエスト、プルリクエストなど、どんな形でも構いません。大きな変更を加える前に、まずはissueで提案してください。
+
+## 📄 ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。詳細は[LICENSE](LICENSE)ファイルをご覧ください。
+
+## 👨‍💻 開発者
+
+- **田中 敦喜** - [GitHub](https://github.com/atsukitanaka0922)
