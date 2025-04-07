@@ -5,7 +5,7 @@
  * Googleアカウントでのソーシャルログイン機能を提供します
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import AppLogo from './AppLogo';
@@ -51,7 +51,7 @@ export default function LoginRegister() {
   /**
    * メールアドレスとパスワードでのログイン
    */
-  const handleEmailLogin = async (e) => {
+  const handleEmailLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // 入力検証
@@ -70,7 +70,7 @@ export default function LoginRegister() {
   /**
    * メールアドレスとパスワードでの会員登録
    */
-  const handleEmailRegister = async (e) => {
+  const handleEmailRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // 入力検証
@@ -100,7 +100,7 @@ export default function LoginRegister() {
   /**
    * パスワードリセットメールの送信
    */
-  const handleResetPassword = async (e) => {
+  const handleResetPassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!email) {
