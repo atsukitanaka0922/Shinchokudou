@@ -17,7 +17,8 @@ import {
   where, 
   getDocs, 
   writeBatch,
-  onSnapshot
+  onSnapshot,
+  Timestamp
 } from "firebase/firestore";
 import { useAuthStore } from "@/store/auth";
 import { usePomodoroStore } from "@/store/pomodoroStore";
@@ -37,6 +38,7 @@ export type Task = {
   order: number;            // 表示順序
   priority: PriorityLevel;  // 優先度（high/medium/low）
   createdAt?: number;       // 作成日時のタイムスタンプ
+  scheduledForDeletion?: boolean; // 削除予定フラグ
 };
 
 /**
@@ -57,7 +59,11 @@ interface TaskState {
   startPomodoro: (taskId: string) => void;
   clearTasks: () => void;
   reorderTasks: (sourceIndex: number, destinationIndex: number) => Promise<void>;
+  checkAndDeleteCompletedTasks: () => Promise<void>; // 完了したタスクの削除チェック
 }
+
+// 1週間のミリ秒数
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * タスク完了時の効果音を再生
@@ -127,6 +133,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         
         console.log("Firestoreからタスク取得成功:", tasks);
         set({ tasks, loading: false });
+        
+        // タスクを読み込んだ後、完了済みで古いタスクの削除チェック
+        get().checkAndDeleteCompletedTasks();
       }, (error) => {
         console.error("Firestoreの監視エラー:", error);
         set({ loading: false });
@@ -164,6 +173,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       order: tasks.length + 1,
       priority,
       createdAt: Date.now(),
+      scheduledForDeletion: false,
       ...(deadline ? { deadline } : {}),
     };
 
@@ -221,7 +231,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const completedAt = newCompleted ? Date.now() : null;
     
     try {
-      await updateDoc(doc(db, "tasks", taskId), { completed: newCompleted, completedAt });
+      // 完了状態、完了日時、削除予定フラグを更新
+      // 完了する場合は1週間後の自動削除予定としてフラグを設定
+      await updateDoc(doc(db, "tasks", taskId), { 
+        completed: newCompleted, 
+        completedAt, 
+        scheduledForDeletion: newCompleted 
+      });
       // リアルタイムリスナーで自動更新
       
       // タスクが完了に変更された場合
@@ -231,7 +247,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         
         // フィードバック表示
         const feedbackStore = useFeedbackStore.getState();
-        feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！`);
+        feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！ (1週間後に自動的に削除されます)`);
       }
     } catch (error) {
       console.error("タスク状態変更エラー:", error);
@@ -384,5 +400,55 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     console.log("ドラッグ&ドロップ機能は現在無効化されています");
     // 何もしないダミー関数
     return;
+  },
+
+  /**
+   * 完了から1週間経過したタスクを削除する
+   * 定期的に呼び出されて、削除条件を満たすタスクをチェック
+   */
+  checkAndDeleteCompletedTasks: async () => {
+    const tasks = get().tasks;
+    const now = Date.now();
+    const tasksToDelete = tasks.filter(task => {
+      // 完了していて、completedAtが存在し、1週間以上経過しているものを対象
+      return task.completed && 
+             task.completedAt && 
+             (now - task.completedAt > ONE_WEEK_MS) &&
+             task.scheduledForDeletion;
+    });
+    
+    if (tasksToDelete.length === 0) return;
+    
+    try {
+      // 削除対象のタスクがある場合、バッチ処理で一括削除
+      const batch = writeBatch(db);
+      tasksToDelete.forEach(task => {
+        const taskRef = doc(db, "tasks", task.id);
+        batch.delete(taskRef);
+      });
+      
+      await batch.commit();
+      
+      // 削除完了のフィードバック
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(`完了から1週間経過した${tasksToDelete.length}件のタスクを自動的に削除しました`);
+      
+      console.log(`${tasksToDelete.length}件の古い完了済みタスクを削除しました`);
+    } catch (error) {
+      console.error("古いタスクの削除に失敗:", error);
+    }
   }
 }));
+
+// アプリ起動時に定期的なタスクチェック処理をセットアップ
+if (typeof window !== 'undefined') {
+  // 1時間ごとに自動削除チェックを実行
+  setInterval(() => {
+    const { checkAndDeleteCompletedTasks } = useTaskStore.getState();
+    const user = useAuthStore.getState().user;
+    
+    if (user) {
+      checkAndDeleteCompletedTasks();
+    }
+  }, 60 * 60 * 1000); // 1時間ごと
+}

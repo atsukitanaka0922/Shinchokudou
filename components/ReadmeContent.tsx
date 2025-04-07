@@ -89,13 +89,21 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* PWA機能 */}
+      <h4 className="font-medium mt-3 mb-1">7. PWA対応</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          進捗堂はPWA（Progressive Web App）に対応しています。ホーム画面に追加すると、アプリのようにオフラインでも利用できます。ブラウザのインストールオプションを使用するか、「共有」→「ホーム画面に追加」で利用できます。
+        </p>
+      </div>
+      
       {/* 使い始め方の説明 */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🚀 使い始め方</h3>
       
       <div className="pl-4 mb-3">
         <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
           <li>
-            <strong>ログイン:</strong> Googleアカウントでログインして個人データを保存します
+            <strong>アカウント作成:</strong> メールアドレスとパスワードで登録、またはGoogleアカウントでログインできます
           </li>
           <li>
             <strong>タスク追加:</strong> 「新しいタスクを追加」フォームでタスクを作成します
@@ -111,6 +119,9 @@ export default function ReadmeContent() {
           </li>
           <li>
             <strong>通知設定:</strong> ブラウザの通知許可を「許可」に設定すると、タイマー終了時に通知が表示されます
+          </li>
+          <li>
+            <strong>アプリとして使用:</strong> ホーム画面に追加して、ネイティブアプリのように使用できます
           </li>
         </ol>
       </div>
@@ -131,6 +142,9 @@ export default function ReadmeContent() {
         <p>
           <strong>・定期的な振り返り:</strong> 完了したタスクの統計を確認して、自分の生産性パターンを把握しましょう。
         </p>
+        <p>
+          <strong>・オフラインでの使用:</strong> PWAとしてインストールすると、インターネット接続が不安定な環境でも利用できます。
+        </p>
       </div>
       
       {/* トラブルシューティングのセクション */}
@@ -146,12 +160,33 @@ export default function ReadmeContent() {
         <p>
           <strong>・BGMが再生されない:</strong> BGMタブで再生ボタンをクリックして、ブラウザのオーディオ設定を確認してください。
         </p>
+        <p>
+          <strong>・PWAがインストールできない:</strong> ブラウザがPWAに対応しているか確認してください。iOSではSafari、AndroidではChromeを推奨します。
+        </p>
+        <p>
+          <strong>・メール認証メールが届かない:</strong> 迷惑メールフォルダを確認し、認証に関するメールがフィルタリングされていないか確認してください。
+        </p>
       </div>
       
       {/* 更新履歴セクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🔄 更新履歴</h3>
 
       {/* 最新バージョン */}
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
+          <div>
+            <p className="font-medium">v1.4.0</p>
+            <ul className="list-disc pl-5">
+              <li>PWA（Progressive Web App）対応：ホーム画面に追加して本格的アプリとして使用可能に</li>
+              <li>メールアドレスとパスワードによるユーザー登録/ログイン機能の追加</li>
+              <li>デスクトップビューのレイアウト改善</li>
+              <li>アプリインストールガイドの追加</li>
+              <li>完了したタスクの自動削除機能を追加（完了から1週間後）</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>

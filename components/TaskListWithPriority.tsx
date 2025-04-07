@@ -47,9 +47,6 @@ export default function TaskListWithPriority() {
       loadTasks();
     }
     
-    // デバッグログ
-    console.log("TaskListWithPriority - 現在のタスク:", tasks);
-    
     return () => {
       setMounted(false);
     };
@@ -83,20 +80,31 @@ export default function TaskListWithPriority() {
     setEditPriority(priority);
   };
   
+  // タスク完了からの経過時間を計算
+  const getCompletionStatusText = (task: any): string => {
+    if (!task.completed || !task.completedAt) return '';
+    
+    const now = Date.now();
+    const diffMs = now - task.completedAt;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return '今日完了';
+    if (diffDays === 1) return '昨日完了';
+    
+    // 残り何日で削除されるかを計算
+    const daysUntilDeletion = 7 - diffDays;
+    if (daysUntilDeletion > 0) {
+      return `${diffDays}日前に完了（あと${daysUntilDeletion}日で削除）`;
+    } else {
+      return `${diffDays}日前に完了（もうすぐ削除）`;
+    }
+  };
+  
   // フィルター条件に基づいてタスクをフィルタリング
   const filteredTasks = tasks.filter(task => {
     if (filter === 'active') return !task.completed;
     if (filter === 'completed') return task.completed;
     return true;
-  });
-  
-  // デバッグ情報の出力
-  console.log("タスクリストレンダリング状態:", {
-    mounted,
-    user: user?.uid || "未ログイン",
-    loading,
-    tasksLength: tasks.length,
-    filteredTasksLength: filteredTasks.length
   });
   
   // クライアントサイドレンダリングの確認
@@ -253,8 +261,15 @@ export default function TaskListWithPriority() {
                       {getPriorityText(task.priority)}
                     </span>
                     
+                    {/* 完了日時表示 */}
+                    {task.completed && task.completedAt && (
+                      <span className="inline-flex items-center text-xs text-blue-600">
+                        ✓ {getCompletionStatusText(task)}
+                      </span>
+                    )}
+                    
                     {/* 作成日時表示 */}
-                    {task.createdAt && (
+                    {task.createdAt && !task.completed && (
                       <span className="inline-flex items-center">
                         作成: {new Date(task.createdAt).toLocaleDateString()}
                       </span>
@@ -343,6 +358,13 @@ export default function TaskListWithPriority() {
                           ))}
                         </div>
                       </div>
+                      
+                      {/* 完了したタスクの場合は自動削除の説明 */}
+                      {task.completed && task.completedAt && (
+                        <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                          <p>このタスクは完了済みです。完了から1週間後に自動的に削除されます。</p>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
