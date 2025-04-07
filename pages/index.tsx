@@ -28,6 +28,13 @@ import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
 
+// window.workboxのための型拡張
+declare global {
+  interface Window {
+    workbox?: any;
+  }
+}
+
 /**
  * ホームページコンポーネント
  * アプリケーションのメインページを構成し、各機能コンポーネントを配置
