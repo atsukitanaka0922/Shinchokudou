@@ -27,6 +27,8 @@ import TaskListWithPriority from "@/components/TaskListWithPriority";
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
+import LoginBonusRoulette from "@/components/LoginBonusRoulette";
+import PointsDisplay from "@/components/PointsDisplay";
 
 // window.workboxのための型拡張
 declare global {
@@ -34,7 +36,6 @@ declare global {
     workbox?: any;
   }
 }
-
 /**
  * ホームページコンポーネント
  * アプリケーションのメインページを構成し、各機能コンポーネントを配置
@@ -86,7 +87,6 @@ export default function Home() {
       console.log("PWA対応: ServiceWorkerが有効です");
     }
   }, []);
-
   // サーバーサイドレンダリング時はマウント状態を確認
   if (!mounted) {
     // 初期表示用のシンプルなスケルトン
@@ -127,6 +127,7 @@ export default function Home() {
         <Feedback />       {/* フィードバック通知 */}
         <DeadlineWarning />{/* 締め切り警告 */}
         <FloatingMenu />   {/* 設定メニュー */}
+        <LoginBonusRoulette /> {/* ログインボーナスルーレット */}
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
         {!user ? (
@@ -136,8 +137,8 @@ export default function Home() {
         ) : (
           // ログイン済みの場合はアプリのメイン画面を表示
           <>
-            {/* モバイル版レイアウト */}
-            {isMobile ? (
+          {/* モバイル版レイアウト */}
+          {isMobile ? (
               <div className="container mx-auto p-4">
                 {/* ロゴ - モバイル版 */}
                 <div className="flex justify-center mb-6">
@@ -148,6 +149,7 @@ export default function Home() {
                 <div className="space-y-4 mb-20">
                   <Dashboard />
                   <Weather />
+                  <PointsDisplay />
                   <AITaskSuggestions />
                   <TaskStats />
                   <AddTaskWithPriority />
@@ -199,6 +201,8 @@ export default function Home() {
                   
                   {/* 右側のサイドバー */}
                   <div className="col-span-12 md:col-span-4 space-y-6">
+                    <PointsDisplay />
+                    
                     <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                       <TaskStats />
                     </motion.div>
@@ -220,7 +224,6 @@ export default function Home() {
     </>
   );
 }
-
 /**
  * PWAインストールガイドコンポーネント
  * PWAをインストールする方法を説明するカード
