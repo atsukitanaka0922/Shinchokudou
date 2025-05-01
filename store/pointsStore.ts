@@ -7,7 +7,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { 
   collection, 
   doc, 
@@ -18,11 +18,13 @@ import {
   getDocs, 
   orderBy, 
   limit,
-  Timestamp 
+  getDoc
 } from "firebase/firestore";
 import { useAuthStore } from "@/store/auth";
 import { useFeedbackStore } from "@/store/feedbackStore";
 import { PriorityLevel } from "@/lib/aiPriorityAssignment";
+import { handleFirestoreError, safeFirestoreOperation } from "@/lib/firestoreErrorHandler";
+import { checkAuthState } from "@/lib/authStateCheck";
 
 /**
  * ポイント履歴のインターフェース定義
@@ -57,11 +59,12 @@ interface PointsState {
 /**
  * ポイント基本値（非公開）
  * 優先度に応じた基本ポイント + ランダム要素
+ * v1.5.0: より単純な固定値に変更
  */
 const BASE_POINTS = {
-  high: { min: 25, max: 35 },
-  medium: { min: 15, max: 25 },
-  low: { min: 8, max: 15 }
+  high: 30,    // 高優先度: 30ポイント
+  medium: 20,  // 中優先度: 20ポイント
+  low: 10      // 低優先度: 10ポイント
 };
 
 /**
@@ -79,21 +82,38 @@ export const usePointsStore = create<PointsState>()(
        * ポイントデータをFirestoreから読み込む
        */
       loadPoints: async () => {
-        const user = useAuthStore.getState().user;
-        if (!user) return;
+        // 現在のユーザーと認証状態を確認
+        const currentUser = checkAuthState();
+        if (!currentUser) {
+          console.log("ポイントロード: ユーザーがログインしていません");
+          set({ totalPoints: 0, history: [], loading: false });
+          return;
+        }
 
         set({ loading: true });
 
         try {
-          // ユーザーのポイント履歴を取得
+          console.log("ポイント履歴のロード開始:", currentUser.uid);
+          
+          // ユーザーのポイント履歴を取得するクエリ
           const historyQuery = query(
             collection(db, "pointHistory"),
-            where("userId", "==", user.uid),
+            where("userId", "==", currentUser.uid),
             orderBy("timestamp", "desc"),
             limit(50) // 最新50件のみ取得
           );
           
           const historySnapshot = await getDocs(historyQuery);
+          
+          if (historySnapshot.empty) {
+            console.log("ポイント履歴が存在しません");
+            set({ totalPoints: 0, history: [], loading: false });
+            return;
+          }
+          
+          // ログと履歴データの変換
+          console.log(`取得したポイント履歴: ${historySnapshot.docs.length}件`);
+          
           const history = historySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -102,13 +122,17 @@ export const usePointsStore = create<PointsState>()(
           // 合計ポイントを計算
           const total = history.reduce((sum, item) => sum + item.points, 0);
           
+          console.log(`合計ポイント: ${total}ポイント, 履歴: ${history.length}件`);
+          
           set({ 
             totalPoints: total,
             history,
             loading: false
           });
         } catch (error) {
-          console.error('ポイントデータ読み込みエラー:', error);
+          // エラー処理を強化
+          handleFirestoreError(error, "ポイントデータの読み込みに失敗しました");
+          console.error('ポイントデータ読み込みエラー詳細:', error);
           set({ loading: false });
         }
       },
@@ -120,16 +144,25 @@ export const usePointsStore = create<PointsState>()(
        * @param isHidden ポイント数を表示するかどうか（デフォルトは表示する）
        */
       addPoints: async (points, description = "タスク完了", isHidden = false) => {
-        const user = useAuthStore.getState().user;
-        if (!user) return;
+        // 現在のユーザーと認証状態を確認
+        const currentUser = checkAuthState();
+        if (!currentUser) {
+          console.error("ポイント追加: ユーザーがログインしていません");
+          return;
+        }
         
         // 負の値は処理しない
-        if (points <= 0) return;
+        if (points <= 0) {
+          console.error("ポイント追加: 無効なポイント値（0以下）");
+          return;
+        }
 
         try {
+          console.log(`ポイント追加開始: ${points}ポイント, 説明: ${description}`);
+          
           // 新しいポイント履歴を作成
           const newHistory: PointHistory = {
-            userId: user.uid,
+            userId: currentUser.uid,
             points: points,
             description,
             timestamp: Date.now(),
@@ -138,6 +171,7 @@ export const usePointsStore = create<PointsState>()(
           
           // Firestoreに保存
           const docRef = await addDoc(collection(db, "pointHistory"), newHistory);
+          console.log(`ポイント履歴保存完了: ドキュメントID ${docRef.id}`);
           
           // ローカルの状態を更新
           set(state => ({
@@ -155,12 +189,12 @@ export const usePointsStore = create<PointsState>()(
           } else {
             feedbackStore.setMessage(`+${points} ポイントを獲得しました！（${description}）`);
           }
-        } catch (error) {
-          console.error('ポイント追加エラー:', error);
           
-          // エラーをフィードバックで表示
-          const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage('ポイントの追加に失敗しました');
+          console.log(`ポイント追加完了: 合計 ${get().totalPoints}ポイント`);
+        } catch (error) {
+          // エラー処理を強化
+          handleFirestoreError(error, "ポイントの追加に失敗しました");
+          console.error('ポイント追加エラー詳細:', error);
         }
       },
 
@@ -171,11 +205,18 @@ export const usePointsStore = create<PointsState>()(
        * @returns 使用が成功したかどうか
        */
       usePoints: async (points, description) => {
-        const user = useAuthStore.getState().user;
-        if (!user) return false;
+        // 現在のユーザーと認証状態を確認
+        const currentUser = checkAuthState();
+        if (!currentUser) {
+          console.error("ポイント使用: ユーザーがログインしていません");
+          return false;
+        }
         
         // 負の値は処理しない
-        if (points <= 0) return false;
+        if (points <= 0) {
+          console.error("ポイント使用: 無効なポイント値（0以下）");
+          return false;
+        }
         
         // 残高が足りるか確認
         const { totalPoints } = get();
@@ -186,9 +227,11 @@ export const usePointsStore = create<PointsState>()(
         }
 
         try {
+          console.log(`ポイント使用開始: ${points}ポイント, 説明: ${description}`);
+          
           // 新しいポイント履歴を作成（負の値で記録）
           const newHistory: PointHistory = {
-            userId: user.uid,
+            userId: currentUser.uid,
             points: -points, // 消費したので負の値
             description,
             timestamp: Date.now()
@@ -196,6 +239,7 @@ export const usePointsStore = create<PointsState>()(
           
           // Firestoreに保存
           const docRef = await addDoc(collection(db, "pointHistory"), newHistory);
+          console.log(`ポイント使用履歴保存完了: ドキュメントID ${docRef.id}`);
           
           // ローカルの状態を更新
           set(state => ({
@@ -210,14 +254,12 @@ export const usePointsStore = create<PointsState>()(
           const feedbackStore = useFeedbackStore.getState();
           feedbackStore.setMessage(`${points}ポイントを使用しました（${description}）`);
           
+          console.log(`ポイント使用完了: 残り ${get().totalPoints}ポイント`);
           return true;
         } catch (error) {
-          console.error('ポイント使用エラー:', error);
-          
-          // エラーをフィードバックで表示
-          const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage('ポイントの使用に失敗しました');
-          
+          // エラー処理を強化
+          handleFirestoreError(error, "ポイントの使用に失敗しました");
+          console.error('ポイント使用エラー詳細:', error);
           return false;
         }
       },
@@ -226,20 +268,27 @@ export const usePointsStore = create<PointsState>()(
        * ポイントをリセット（デバッグ・テスト用）
        */
       resetPoints: async () => {
-        const user = useAuthStore.getState().user;
-        if (!user) return;
+        // 現在のユーザーと認証状態を確認
+        const currentUser = checkAuthState();
+        if (!currentUser) {
+          console.error("ポイントリセット: ユーザーがログインしていません");
+          return;
+        }
 
         try {
+          console.log("ポイントリセット開始");
+          
           // 新しいポイント履歴を作成（リセット記録）
           const resetHistory: PointHistory = {
-            userId: user.uid,
+            userId: currentUser.uid,
             points: -get().totalPoints, // 現在の合計を負の値で相殺
             description: "ポイントリセット",
             timestamp: Date.now()
           };
           
           // Firestoreに保存
-          await addDoc(collection(db, "pointHistory"), resetHistory);
+          const docRef = await addDoc(collection(db, "pointHistory"), resetHistory);
+          console.log(`ポイントリセット履歴保存完了: ドキュメントID ${docRef.id}`);
           
           // ローカルの状態をリセット
           set({ totalPoints: 0, history: [] });
@@ -250,24 +299,23 @@ export const usePointsStore = create<PointsState>()(
           // フィードバック表示
           const feedbackStore = useFeedbackStore.getState();
           feedbackStore.setMessage('ポイントをリセットしました');
-        } catch (error) {
-          console.error('ポイントリセットエラー:', error);
           
-          // エラーをフィードバックで表示
-          const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage('ポイントのリセットに失敗しました');
+          console.log("ポイントリセット完了");
+        } catch (error) {
+          // エラー処理を強化
+          handleFirestoreError(error, "ポイントのリセットに失敗しました");
+          console.error('ポイントリセットエラー詳細:', error);
         }
       },
 
       /**
-       * タスクの優先度からポイントを計算（透明化のため内部のみで使用）
-       * 基本値 + ランダム要素で計算
+       * タスクの優先度からポイントを計算
+       * v1.5.0: 単純な固定値に変更
        * @param priority 優先度
        * @returns 計算されたポイント値
        */
       calculateTaskPoints: (priority) => {
-        const range = BASE_POINTS[priority];
-        return Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+        return BASE_POINTS[priority];
       }
     }),
     {
@@ -286,7 +334,12 @@ useAuthStore.subscribe(
   (state) => state.user,
   (user) => {
     if (user) {
+      console.log("ユーザーログイン検出: ポイントデータを読み込みます");
       usePointsStore.getState().loadPoints();
+    } else {
+      console.log("ユーザーログアウト検出: ポイントデータをクリア");
+      // ユーザーがログアウトした場合はポイントをクリア
+      usePointsStore.setState({ totalPoints: 0, history: [] });
     }
   }
 );

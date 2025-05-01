@@ -96,39 +96,33 @@ export default function LoginBonusRoulette() {
     
     try {
       // 回転アニメーションの開始
-      const randomRotations = 5 + Math.random() * 5; // 5〜10回転
+      const randomRotations = 5 + Math.random() * 5;
       const totalRotation = 360 * randomRotations;
       setRotationDegree(totalRotation);
       
       // アニメーション完了後に結果を表示
       spinTimeoutRef.current = setTimeout(async () => {
         try {
-          // サーバーサイドでボーナス付与
-          const bonusResult = await giveLoginBonus(user.uid);
+          // 安全なボーナス付与関数を使用
+          const bonusResult = await giveLoginBonusSafely(user.uid);
           
-          // 結果を表示
-          setResult(bonusResult);
-          
-          // フィードバック表示
-          if (bonusResult.consecutiveBonus > 0) {
-            setMessage(`${bonusResult.consecutiveDays}日連続ログイン達成！ボーナスポイントを獲得しました！`);
+          if (bonusResult) {
+            // 結果を表示
+            setResult(bonusResult);
           } else {
-            setMessage('ログインボーナスを獲得しました！');
+            // エラー発生時のフィードバック
+            const feedbackStore = useFeedbackStore.getState();
+            feedbackStore.setMessage('ボーナス付与に失敗しました。ページを更新してください。');
           }
-          
-          // ルーレットの状態を更新
-          setHasReceived(true);
         } catch (error) {
           console.error("ボーナス付与エラー:", error);
-          setMessage('ボーナス付与中にエラーが発生しました');
         } finally {
           setIsSpinning(false);
         }
-      }, 3000); // 3秒後に結果表示
+      }, 3000);
     } catch (error) {
       console.error("ルーレット実行エラー:", error);
       setIsSpinning(false);
-      setMessage('ルーレットの実行中にエラーが発生しました');
     }
   };
   
@@ -137,6 +131,7 @@ export default function LoginBonusRoulette() {
    */
   const closeRoulette = () => {
     setShowRoulette(false);
+    setResult(null);
   };
   
   // ユーザーがログインしていない場合は何も表示しない
