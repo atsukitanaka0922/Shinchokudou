@@ -1,8 +1,8 @@
 /**
- * フローティングメニューコンポーネント
+ * フローティングメニューコンポーネント（ショップ機能追加版）
  * 
  * アプリケーションの設定や追加機能にアクセスするためのフローティングメニュー
- * テーマ切り替えやBGM再生、READMEへのアクセスなどの機能を提供します
+ * テーマ切り替えやBGM再生、ショップアクセス、READMEへのアクセスなどの機能を提供します
  */
 
 import { useState, useEffect } from 'react';
@@ -12,6 +12,7 @@ import { useThemeStore } from '@/store/themeStore';
 import { useBGMStore } from '@/store/bgmStore';
 import Link from 'next/link';
 import ReadmeContent from './ReadmeContent';
+import PointsShop from './PointsShop';
 
 // 利用可能な背景色
 const bgColorOptions = [
@@ -39,8 +40,9 @@ export default function FloatingMenu() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   
-  // READMEモーダルの表示状態
+  //各種モーダルの表示状態
   const [showReadme, setShowReadme] = useState(false);
+  const [showShop, setShowShop] = useState(false);
 
   // BGMの初期化と状態同期
   useEffect(() => {
@@ -94,6 +96,15 @@ export default function FloatingMenu() {
       setIsOpen(false);
     }
   };
+  
+  // ショップモーダルの表示切り替え
+  const toggleShop = () => {
+    setShowShop(!showShop);
+    // ショップを開く場合はメインメニューを閉じる
+    if (!showShop) {
+      setIsOpen(false);
+    }
+  };
 
   return (
     <>
@@ -119,6 +130,17 @@ export default function FloatingMenu() {
               transition={{ type: 'spring', damping: 20 }}
             >
               <h3 className="font-bold text-gray-700 mb-3">設定</h3>
+              
+              {/* ショップボタン */}
+              <div className="mb-3">
+                <button
+                  onClick={toggleShop}
+                  className="w-full py-2 px-3 bg-purple-100 text-purple-700 rounded-md text-sm font-medium hover:bg-purple-200 transition-colors flex items-center"
+                >
+                  <span className="mr-2">🛍️</span>
+                  ポイントショップ
+                </button>
+              </div>
               
               {/* READMEボタン */}
               <div className="mb-3">
@@ -230,6 +252,39 @@ export default function FloatingMenu() {
               {/* スクロール可能なコンテンツエリア */}
               <div className="p-6 pt-8">
                 <ReadmeContent />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* ショップモーダル */}
+      <AnimatePresence>
+        {showShop && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-lg shadow-xl max-w-6xl w-full h-[85vh] overflow-auto relative"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+            >
+              {/* 閉じるボタン */}
+              <button
+                onClick={toggleShop}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
+                aria-label="閉じる"
+              >
+                <span className="text-xl">✕</span>
+              </button>
+              
+              {/* スクロール可能なコンテンツエリア */}
+              <div className="h-full">
+                <PointsShop />
               </div>
             </motion.div>
           </motion.div>

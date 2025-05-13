@@ -27,8 +27,9 @@ import TaskListWithPriority from "@/components/TaskListWithPriority";
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
+import SimpleLoginBonus from '@/components/SimpleLoginBonus';
 import PointsDisplay from "@/components/PointsDisplay";
-import SimpleLoginBonus from "@/components/SimpleLoginBonus";
+import GameManager from "@/components/GameManager";
 
 // window.workboxのための型拡張
 declare global {
@@ -36,6 +37,7 @@ declare global {
     workbox?: any;
   }
 }
+
 /**
  * ホームページコンポーネント
  * アプリケーションのメインページを構成し、各機能コンポーネントを配置
@@ -87,6 +89,7 @@ export default function Home() {
       console.log("PWA対応: ServiceWorkerが有効です");
     }
   }, []);
+
   // サーバーサイドレンダリング時はマウント状態を確認
   if (!mounted) {
     // 初期表示用のシンプルなスケルトン
@@ -126,8 +129,9 @@ export default function Home() {
         {/* 共通コンポーネント */}
         <Feedback />       {/* フィードバック通知 */}
         <DeadlineWarning />{/* 締め切り警告 */}
-        <FloatingMenu />   {/* 設定メニュー */}
-        <SimpleLoginBonus />
+        <FloatingMenu />   {/* 設定メニュー（ショップアクセス含む） */}
+        <SimpleLoginBonus /> {/* シンプルログインボーナス */}
+        <GameManager />    {/* ゲームマネージャー */}
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
         {!user ? (
@@ -137,8 +141,8 @@ export default function Home() {
         ) : (
           // ログイン済みの場合はアプリのメイン画面を表示
           <>
-          {/* モバイル版レイアウト */}
-          {isMobile ? (
+            {/* モバイル版レイアウト */}
+            {isMobile ? (
               <div className="container mx-auto p-4">
                 {/* ロゴ - モバイル版 */}
                 <div className="flex justify-center mb-6">
@@ -224,6 +228,7 @@ export default function Home() {
     </>
   );
 }
+
 /**
  * PWAインストールガイドコンポーネント
  * PWAをインストールする方法を説明するカード
