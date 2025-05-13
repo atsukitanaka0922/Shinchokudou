@@ -1,8 +1,11 @@
 /**
- * ログインボーナスサービス
+ * ログインボーナスサービス（順序修正版）
  * 
- * ユーザーログイン時のボーナスポイント付与ロジックを提供
- * ルーレット方式のボーナス決定や連続ログイン特典などを管理
+ * UIコンポーネントとの完全な同期を実現
+ * 
+ * 修正内容：
+ * - ROULETTE_OPTIONSの順序をLoginBonusRoulette.tsxと完全に一致させた
+ * - インデックスとポイントの対応を確実に保証
  */
 
 import { db, auth } from "@/lib/firebase";
@@ -45,16 +48,15 @@ interface LoginRecord {
 }
 
 /**
- * ルーレットオプションの設定
- * 確率の合計は100になるようにする
- * v1.5.0: より単純な数値に変更（10、20、30、50、100）
+ * ルーレットオプションの設定（LoginBonusRoulette.tsxと完全同期）
+ * 重要: この順序を変更する場合は、必ずLoginBonusRoulette.tsxも同様に変更すること
  */
 const ROULETTE_OPTIONS: BonusOption[] = [
-  { points: 10, label: '10', probability: 30, color: '#f8bbd0' },
-  { points: 20, label: '20', probability: 30, color: '#c8e6c9' },
-  { points: 30, label: '30', probability: 20, color: '#b3e5fc' },
-  { points: 50, label: '50', probability: 15, color: '#ffe0b2' },
-  { points: 100, label: '100', probability: 5, color: '#ffecb3' }
+  { points: 10, label: '10', probability: 30, color: '#FFE0E6' },    // インデックス 0
+  { points: 20, label: '20', probability: 30, color: '#E6F7FF' },    // インデックス 1
+  { points: 30, label: '30', probability: 20, color: '#F6FFED' },    // インデックス 2
+  { points: 50, label: '50', probability: 15, color: '#FFF7E6' },    // インデックス 3
+  { points: 100, label: '100', probability: 5, color: '#FFF1F0' }    // インデックス 4
 ];
 
 /**
@@ -75,25 +77,44 @@ export const getTodayDate = (): string => {
 };
 
 /**
- * ランダムなボーナスを確率に基づいて選択
- * @returns 選択されたボーナスオプション
+ * ランダムなボーナスを確率に基づいて選択（完全同期版）
+ * @returns 選択されたボーナスオプションとそのインデックス
  */
-export const spinRoulette = (): BonusOption => {
+export const spinRouletteWithIndex = (): { option: BonusOption, index: number } => {
   // 乱数を生成（0～100）
   const random = Math.random() * 100;
+  
+  console.log('=== spinRouletteWithIndex ログ ===');
+  console.log('生成された乱数:', random);
+  console.log('ROULETTE_OPTIONS配列:', ROULETTE_OPTIONS);
   
   // 累積確率を計算してボーナスを選択
   let cumulativeProbability = 0;
   
-  for (const option of ROULETTE_OPTIONS) {
-    cumulativeProbability += option.probability;
+  for (let i = 0; i < ROULETTE_OPTIONS.length; i++) {
+    cumulativeProbability += ROULETTE_OPTIONS[i].probability;
+    console.log(`インデックス ${i}: ${ROULETTE_OPTIONS[i].points}pt, 累積確率: ${cumulativeProbability}`);
+    
     if (random <= cumulativeProbability) {
-      return option;
+      console.log(`選択結果 - インデックス: ${i}, ポイント: ${ROULETTE_OPTIONS[i].points}`);
+      console.log('選択されたオプション:', ROULETTE_OPTIONS[i]);
+      console.log('=== spinRouletteWithIndex 終了 ===');
+      return { option: ROULETTE_OPTIONS[i], index: i };
     }
   }
   
-  // 万が一どのオプションも選ばれなかった場合（確率の合計が100未満の場合など）
-  return ROULETTE_OPTIONS[0];
+  // 万が一の場合のフォールバック
+  console.error('WARNING: フォールバック - インデックス 0が選択されました');
+  console.log('=== spinRouletteWithIndex 終了（フォールバック） ===');
+  return { option: ROULETTE_OPTIONS[0], index: 0 };
+};
+
+/**
+ * 既存のspinRoulette関数（互換性のために残しておく）
+ * @returns 選択されたボーナスオプション
+ */
+export const spinRoulette = (): BonusOption => {
+  return spinRouletteWithIndex().option;
 };
 
 /**
@@ -138,11 +159,9 @@ export const calculateConsecutiveDaysSafely = async (userId: string): Promise<nu
     }
     
     // 過去のログイン記録を取得
-    // 注意: ここではインデックスエラーを避けるため、orderBy部分を分離して処理する
     const loginQuery = query(
       collection(db, "loginRecords"),
       where("userId", "==", userId)
-      // orderByは使わずに取得後にJavaScriptでソートする
     );
     
     const snapshot = await getDocs(loginQuery);
@@ -206,9 +225,6 @@ export const calculateConsecutiveDaysSafely = async (userId: string): Promise<nu
   } catch (error) {
     // エラー発生時は詳細をログ出力
     console.error("連続ログイン計算エラー詳細:", error);
-    
-    // フィードバックメッセージは表示しない（ユーザーにとって重要ではないエラーのため）
-    // エラーが発生しても連続ログイン機能は重要度が低いので、デフォルト値を返す
     return 1;
   }
 };
@@ -292,4 +308,15 @@ export const giveLoginBonus = async (userId: string): Promise<{
  */
 export const getRouletteOptions = (): BonusOption[] => {
   return ROULETTE_OPTIONS;
+};
+
+/**
+ * デバッグ用: インデックスとポイントの対応を確認
+ */
+export const debugIndexMapping = () => {
+  console.log('=== デバッグ: インデックス-ポイント対応表 ===');
+  ROULETTE_OPTIONS.forEach((option, index) => {
+    console.log(`インデックス ${index}: ${option.points}pt`);
+  });
+  console.log('====================================');
 };
