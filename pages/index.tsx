@@ -27,8 +27,8 @@ import TaskListWithPriority from "@/components/TaskListWithPriority";
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
-import ScratchCardLottery from '@/components/ScratchCardLottery';
 import PointsDisplay from "@/components/PointsDisplay";
+import SimpleLoginBonus from "@/components/SimpleLoginBonus";
 
 // window.workboxのための型拡張
 declare global {
@@ -127,7 +127,7 @@ export default function Home() {
         <Feedback />       {/* フィードバック通知 */}
         <DeadlineWarning />{/* 締め切り警告 */}
         <FloatingMenu />   {/* 設定メニュー */}
-        <ScratchCardLottery />
+        <SimpleLoginBonus />
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
         {!user ? (
