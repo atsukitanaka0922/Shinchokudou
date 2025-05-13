@@ -282,6 +282,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       createdAt: Date.now(),
       scheduledForDeletion: false,
       memo,
+      points: taskPoints,
       ...(deadline ? { deadline } : {}),
     };
 
@@ -359,14 +360,27 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           await completeAllSubTasksByParentId(taskId);
         }
         
-        // ポイントを加算（ポイント値は透明化）
+        // ポイントを加算
         const pointsStore = usePointsStore.getState();
-        const calculatedPoints = pointsStore.calculateTaskPoints(task.priority);
+        const calculatedPoints = task.points || pointsStore.calculateTaskPoints(task.priority);
         await pointsStore.addPoints(calculatedPoints, `タスク完了: ${task.text}`);
         
-        // フィードバック表示（ポイント値は非表示）
+        // フィードバック表示
         const feedbackStore = useFeedbackStore.getState();
-        feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！ ポイントを獲得しました！ (1週間後に自動的に削除されます)`);
+        feedbackStore.setMessage(`🎉 タスク「${task.text}」を完了しました！ +${calculatedPoints}ポイント獲得！ (1週間後に自動的に削除されます)`);
+      } 
+      // タスクの完了が取り消された場合
+      else if (task.completed) {
+        // ポイントを取り消す処理を追加
+        const pointsStore = usePointsStore.getState();
+        // タスクのポイント、または優先度に基づくデフォルトポイント
+        const calculatedPoints = task.points || pointsStore.calculateTaskPoints(task.priority);
+        // マイナスのポイントとしてポイント履歴に記録
+        await pointsStore.cancelPoints(calculatedPoints, `タスク完了取消: ${task.text}`);
+        
+        // フィードバック表示
+        const feedbackStore = useFeedbackStore.getState();
+        feedbackStore.setMessage(`タスク「${task.text}」の完了を取り消しました。-${calculatedPoints}ポイント`);
       }
     } catch (error) {
       console.error("タスク状態変更エラー:", error);

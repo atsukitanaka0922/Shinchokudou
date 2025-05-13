@@ -51,6 +51,7 @@ interface PointsState {
   addPoints: (points: number, description?: string, isHidden?: boolean) => Promise<void>;  // ポイントを追加
   usePoints: (points: number, description: string) => Promise<boolean>;  // ポイントを使用
   resetPoints: () => Promise<void>;    // ポイントをリセット
+  cancelPoints: (points: number, description?: string) => Promise<void>; // ポイントを取り消す
   
   // ポイント計算ヘルパー（内部利用）
   calculateTaskPoints: (priority: PriorityLevel) => number; // 優先度からポイントを計算
@@ -261,6 +262,61 @@ export const usePointsStore = create<PointsState>()(
           handleFirestoreError(error, "ポイントの使用に失敗しました");
           console.error('ポイント使用エラー詳細:', error);
           return false;
+        }
+      },
+
+      /**
+       * ポイントを取り消す（主にタスク完了取り消し時に使用）
+       * @param points 取り消すポイント量
+       * @param description 説明（省略時は「ポイント取り消し」）
+       */
+      cancelPoints: async (points, description = "ポイント取り消し") => {
+        // 現在のユーザーと認証状態を確認
+        const currentUser = checkAuthState();
+        if (!currentUser) {
+          console.error("ポイント取り消し: ユーザーがログインしていません");
+          return;
+        }
+        
+        // 負の値や0は処理しない
+        if (points <= 0) {
+          console.error("ポイント取り消し: 無効なポイント値（0以下）");
+          return;
+        }
+
+        try {
+          console.log(`ポイント取り消し開始: ${points}ポイント, 説明: ${description}`);
+          
+          // 新しいポイント履歴を作成（マイナス値）
+          const newHistory: PointHistory = {
+            userId: currentUser.uid,
+            points: -points, // マイナス値として記録
+            description,
+            timestamp: Date.now()
+          };
+          
+          // Firestoreに保存
+          const docRef = await addDoc(collection(db, "pointHistory"), newHistory);
+          console.log(`ポイント取り消し履歴保存完了: ドキュメントID ${docRef.id}`);
+          
+          // ローカルの状態を更新
+          set(state => ({
+            totalPoints: Math.max(0, state.totalPoints - points), // 0未満にならないよう制限
+            history: [
+              { ...newHistory, id: docRef.id },
+              ...state.history
+            ]
+          }));
+          
+          // フィードバック表示
+          const feedbackStore = useFeedbackStore.getState();
+          feedbackStore.setMessage(`${points}ポイントが取り消されました（${description}）`);
+          
+          console.log(`ポイント取り消し完了: 残り ${get().totalPoints}ポイント`);
+        } catch (error) {
+          // エラー処理
+          handleFirestoreError(error, "ポイントの取り消しに失敗しました");
+          console.error('ポイント取り消しエラー詳細:', error);
         }
       },
 

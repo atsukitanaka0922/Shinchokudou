@@ -50,19 +50,17 @@ interface LoginRecord {
  * v1.5.0: より単純な数値に変更（10、20、30、50、100）
  */
 const ROULETTE_OPTIONS: BonusOption[] = [
-  { points: 10, label: '10ポイント', probability: 30, color: '#f8bbd0' },
-  { points: 20, label: '20ポイント', probability: 30, color: '#c8e6c9' },
-  { points: 30, label: '30ポイント', probability: 20, color: '#b3e5fc' },
-  { points: 50, label: '50ポイント', probability: 15, color: '#ffe0b2' },
-  { points: 100, label: '100ポイント', probability: 5, color: '#ffecb3' }
+  { points: 10, label: '10', probability: 30, color: '#f8bbd0' },
+  { points: 20, label: '20', probability: 30, color: '#c8e6c9' },
+  { points: 30, label: '30', probability: 20, color: '#b3e5fc' },
+  { points: 50, label: '50', probability: 15, color: '#ffe0b2' },
+  { points: 100, label: '100', probability: 5, color: '#ffecb3' }
 ];
 
 /**
- * 連続ログインボーナス設定
- * 特定の日数の連続ログインで追加ボーナス
- * v1.5.0: より単純な数値に変更
+ * 連続ログイン特典の設定値
  */
-const CONSECUTIVE_LOGIN_BONUS = {
+export const CONSECUTIVE_LOGIN_BONUS = {
   3: 15,   // 3日連続: 15ポイント追加
   7: 50,   // 7日連続: 50ポイント追加
   14: 100, // 14日連続: 100ポイント追加
@@ -72,7 +70,7 @@ const CONSECUTIVE_LOGIN_BONUS = {
 /**
  * 今日の日付を取得（YYYY-MM-DD形式）
  */
-const getTodayDate = (): string => {
+export const getTodayDate = (): string => {
   return new Date().toISOString().split('T')[0];
 };
 
@@ -124,97 +122,96 @@ export const hasReceivedTodayBonus = async (userId: string): Promise<boolean> =>
 };
 
 /**
- * 連続ログイン日数を計算
- * インデックスエラーに対応するためにクエリを修正
+ * 連続ログイン日数を計算（エラー処理強化版）
  * @param userId ユーザーID
  * @returns 連続ログイン日数
  */
-export const calculateConsecutiveDays = async (userId: string): Promise<number> => {
-    try {
-      // 今日の日付
-      const today = getTodayDate();
-      
-      // 認証状態確認
-      if (!userId) {
-        console.error("連続ログイン計算: ユーザーIDがありません");
-        return 1;
-      }
-      
-      // 過去のログイン記録を取得
-      // 注意: ここではインデックスエラーを避けるため、orderBy部分を分離して処理する
-      const loginQuery = query(
-        collection(db, "loginRecords"),
-        where("userId", "==", userId)
-        // orderByは使わずに取得後にJavaScriptでソートする
-      );
-      
-      const snapshot = await getDocs(loginQuery);
-      
-      // ログイン記録がない場合は連続日数は1（今日が初日）
-      if (snapshot.empty) {
-        return 1;
-      }
-      
-      // 日付でソート（降順）
-      const loginRecords = snapshot.docs
-        .map(doc => ({
-          date: doc.data().date,
-          timestamp: doc.data().timestamp || 0
-        }))
-        .sort((a, b) => {
-          // 日付の降順でソート
-          if (a.date > b.date) return -1;
-          if (a.date < b.date) return 1;
-          // 同じ日付の場合はタイムスタンプの降順でソート
-          return b.timestamp - a.timestamp;
-        });
-      
-      // 今日を除く過去のログイン記録
-      const previousLoginDates = loginRecords
-        .map(record => record.date)
-        .filter(date => date !== today);
-      
-      // 昨日の日付
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      console.log("連続ログイン計算: 昨日=", yesterdayStr, "最新ログイン=", previousLoginDates[0] || "なし");
-      
-      // 昨日のログイン記録がなければ連続ログインはリセット
-      if (previousLoginDates.length === 0 || previousLoginDates[0] !== yesterdayStr) {
-        return 1;
-      }
-      
-      // 連続ログイン日数を計算
-      let consecutiveDays = 1; // 今日で1日
-      
-      for (let i = 0; i < previousLoginDates.length - 1; i++) {
-        const currentDate = new Date(previousLoginDates[i]);
-        const nextDate = new Date(previousLoginDates[i + 1]);
-        
-        // 日付の差が1日であるか確認
-        const diffTime = currentDate.getTime() - nextDate.getTime();
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
-        
-        if (Math.round(diffDays) === 1) {
-          consecutiveDays++;
-        } else {
-          break;
-        }
-      }
-      
-      console.log("連続ログイン日数:", consecutiveDays);
-      return consecutiveDays;
-    } catch (error) {
-      // エラー発生時は詳細をログ出力
-      console.error("連続ログイン計算エラー詳細:", error);
-      
-      // フィードバックメッセージは表示しない（ユーザーにとって重要ではないエラーのため）
-      // エラーが発生しても連続ログイン機能は重要度が低いので、デフォルト値を返す
+export const calculateConsecutiveDaysSafely = async (userId: string): Promise<number> => {
+  try {
+    // 今日の日付
+    const today = getTodayDate();
+    
+    // 認証状態確認
+    if (!userId) {
+      console.error("連続ログイン計算: ユーザーIDがありません");
       return 1;
     }
-  };
+    
+    // 過去のログイン記録を取得
+    // 注意: ここではインデックスエラーを避けるため、orderBy部分を分離して処理する
+    const loginQuery = query(
+      collection(db, "loginRecords"),
+      where("userId", "==", userId)
+      // orderByは使わずに取得後にJavaScriptでソートする
+    );
+    
+    const snapshot = await getDocs(loginQuery);
+    
+    // ログイン記録がない場合は連続日数は1（今日が初日）
+    if (snapshot.empty) {
+      return 1;
+    }
+    
+    // 日付でソート（降順）
+    const loginRecords = snapshot.docs
+      .map(doc => ({
+        date: doc.data().date,
+        timestamp: doc.data().timestamp || 0
+      }))
+      .sort((a, b) => {
+        // 日付の降順でソート
+        if (a.date > b.date) return -1;
+        if (a.date < b.date) return 1;
+        // 同じ日付の場合はタイムスタンプの降順でソート
+        return b.timestamp - a.timestamp;
+      });
+    
+    // 今日を除く過去のログイン記録
+    const previousLoginDates = loginRecords
+      .map(record => record.date)
+      .filter(date => date !== today);
+    
+    // 昨日の日付
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    console.log("連続ログイン計算: 昨日=", yesterdayStr, "最新ログイン=", previousLoginDates[0] || "なし");
+    
+    // 昨日のログイン記録がなければ連続ログインはリセット
+    if (previousLoginDates.length === 0 || previousLoginDates[0] !== yesterdayStr) {
+      return 1;
+    }
+    
+    // 連続ログイン日数を計算
+    let consecutiveDays = 1; // 今日で1日
+    
+    for (let i = 0; i < previousLoginDates.length - 1; i++) {
+      const currentDate = new Date(previousLoginDates[i]);
+      const nextDate = new Date(previousLoginDates[i + 1]);
+      
+      // 日付の差が1日であるか確認
+      const diffTime = currentDate.getTime() - nextDate.getTime();
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      
+      if (Math.round(diffDays) === 1) {
+        consecutiveDays++;
+      } else {
+        break;
+      }
+    }
+    
+    console.log("連続ログイン日数:", consecutiveDays);
+    return consecutiveDays;
+  } catch (error) {
+    // エラー発生時は詳細をログ出力
+    console.error("連続ログイン計算エラー詳細:", error);
+    
+    // フィードバックメッセージは表示しない（ユーザーにとって重要ではないエラーのため）
+    // エラーが発生しても連続ログイン機能は重要度が低いので、デフォルト値を返す
+    return 1;
+  }
+};
 
 /**
  * ログインボーナスを付与する
@@ -238,7 +235,7 @@ export const giveLoginBonus = async (userId: string): Promise<{
     const rouletteBonus = spinRoulette();
     
     // 連続ログイン日数を計算
-    const consecutiveDays = await calculateConsecutiveDays(userId);
+    const consecutiveDays = await calculateConsecutiveDaysSafely(userId);
     
     // 連続ログイン特典があるかチェック
     let consecutiveBonus = 0;
