@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全体の背景色とテキスト設定 */
+body {
+  @apply text-gray-900 transition-colors;
+  font-family: "Inter", sans-serif;
+}
+
+/* ダークモード時のテキスト色設定を明示的に上書き */
+@media (prefers-color-scheme: dark) {
+  body {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  /* カード内のテキストの色が反転しないように */
+  .bg-white, .bg-gray-50, .bg-gray-100, .bg-blue-50, .bg-green-50, .bg-yellow-50, .bg-red-50 {
+    @apply text-gray-900;
+  }
+  
+  /* カード内のセカンダリーテキストも適切に */
+  .text-gray-500, .text-gray-600, .text-gray-700 {
+    @apply text-gray-400;
+  }
+}
+
+/* Tailwind のコンテナクラスを適用 */
+.container {
+  @apply max-w-4xl mx-auto p-6;
+}
+
+/* ページ全体の背景色を適用 */
+html, body {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* スクロールバーのカスタマイズ（PC向け） */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* PC向けのグリッドレイアウト */
+@media (min-width: 768px) {
+  .grid-layout {
+    @apply grid grid-cols-1 gap-6;
+  }
+
+  .content-box {
+    @apply bg-white p-6 rounded-lg shadow-lg;
+  }
+}
+
+/* iOSダークモード対応 */
+@supports (-webkit-touch-callout: none) {
+  @media (prefers-color-scheme: dark) {
+    /* iOS特有のダークモード調整 */
+    .bg-white, .bg-gray-50, .bg-gray-100 {
+      @apply text-gray-900;
+    }
+  }
+}
