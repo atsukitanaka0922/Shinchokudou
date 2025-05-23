@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth';
-import { useTaskStore } from '@/store/taskStore';
+import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { suggestTasks, SuggestedTask } from '@/lib/aiTaskSuggestion';
 import { useWeatherStore, fetchWeather } from '@/lib/weatherService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function AITaskSuggestions() {
   // ストアからの状態取得
   const { user } = useAuthStore();
-  const { addTask } = useTaskStore();
+  const { addTask } = useEnhancedTaskStore();
   const { data: weatherFromStore } = useWeatherStore();
   
   // ローカル状態

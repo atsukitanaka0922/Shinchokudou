@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react';
-import { useTaskStore } from '@/store/taskStore';
+import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { motion } from 'framer-motion';
 
 /**
@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
  */
 export default function TaskStats() {
   // タスクデータの取得
-  const { tasks } = useTaskStore();
+  const { tasks } = useEnhancedTaskStore();
   
   // 今日の日付（YYYY-MM-DD形式）
   const today = new Date().toISOString().split('T')[0];

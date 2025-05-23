@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useTaskStore } from '@/store/taskStore';
+import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
  */
 export default function DeadlineWarning() {
   // ストアからタスクを取得
-  const { tasks } = useTaskStore();
+  const { tasks } = useEnhancedTaskStore();
   
   // 警告表示の状態
   const [showWarning, setShowWarning] = useState(false);

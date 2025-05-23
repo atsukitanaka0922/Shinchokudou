@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePomodoroStore } from '@/store/pomodoroStore';
 import { useStatsStore } from '@/store/statsStore';
-import { useTaskStore } from '@/store/taskStore';
+import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 
 /**
  * ポモドーロ統計コンポーネント
@@ -30,7 +30,7 @@ export default function PomodoroStats() {
   } = usePomodoroStore();
   
   const { stats, loadStats } = useStatsStore();
-  const { tasks } = useTaskStore();
+  const { tasks } = useEnhancedTaskStore();
   
   // タブがアクティブかどうかの状態
   const [isActive, setIsActive] = useState(true);

@@ -3,18 +3,22 @@
  * 
  * アプリケーションのメインビューを提供
  * レスポンシブデザインに対応し、モバイルとデスクトップで最適なUIを表示
+ * 新機能：ポイントシステム、サブタスク、メモ機能を統合
  */
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useTaskStore } from "@/store/taskStore";
+import { useEnhancedTaskStore } from "@/store/enhancedTaskStore";
+import { usePointStore } from "@/store/pointStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useAuthStore } from "@/store/auth";
 import { useDevice } from "@/hooks/useDevice";
 import Head from "next/head";
 
 // コンポーネントのインポート
-import AddTaskWithPriority from "@/components/AddTaskWithPriority";
+import EnhancedAddTask from "@/components/EnhancedAddTask";
+import EnhancedTaskList from "@/components/EnhancedTaskList";
+import PointsDashboard from "@/components/PointsDashboard";
 import AITaskSuggestions from "@/components/AITaskSuggestions";
 import AppLogo from "@/components/AppLogo";
 import AuthButton from "@/components/AuthButton";
@@ -23,10 +27,10 @@ import DeadlineWarning from "@/components/DeadlineWarning";
 import Feedback from "@/components/Feedback";
 import FloatingMenu from "@/components/FloatingMenu";
 import PomodoroStats from "@/components/PomodoroStats";
-import TaskListWithPriority from "@/components/TaskListWithPriority";
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
+import TaskMigration from "@/components/TaskMigration";
 
 // window.workboxのための型拡張
 declare global {
@@ -40,33 +44,50 @@ declare global {
  * アプリケーションのメインページを構成し、各機能コンポーネントを配置
  */
 export default function Home() {
-  const { loadTasks } = useTaskStore();
+  const { loadTasks } = useEnhancedTaskStore();
+  const { loadUserPoints, checkAndAwardLoginBonus } = usePointStore();
   const { bgColor } = useThemeStore();
   const { user } = useAuthStore(); // 認証状態を取得
   const isMobile = useDevice(); // デバイスタイプを判定
   const [mounted, setMounted] = useState(false);
+  const [dataInitialized, setDataInitialized] = useState(false); // 初期化フラグ
 
   // クライアントサイドのみの処理を確認するためのマウント状態
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 認証状態とタスクデータの初期化
+  // 認証状態とデータの初期化（1回のみ実行）
   useEffect(() => {
-    if (user) {
-      console.log("ホームページがマウントされました - タスク読み込み開始");
-      // ユーザーの認証状態が変わるたびにタスクをロード
-      loadTasks();
+    if (user && !dataInitialized) {
+      console.log("ホームページがマウントされました - データ読み込み開始");
       
-      // デバッグログ
-      console.log("タスク読み込み関数を呼び出しました", { user: user.uid });
+      const initializeData = async () => {
+        try {
+          // タスクとポイントデータをロード
+          await loadTasks();
+          await loadUserPoints();
+          
+          // ログインボーナスはポイントダッシュボードで処理するため、ここでは実行しない
+          // await checkAndAwardLoginBonus();
+          
+          setDataInitialized(true);
+          console.log("データ初期化完了", { user: user.uid });
+        } catch (error) {
+          console.error("データ初期化エラー:", error);
+        }
+      };
+      
+      initializeData();
     }
     
     // クリーンアップ関数
     return () => {
-      console.log("ホームページがアンマウントされました");
+      if (!user) {
+        setDataInitialized(false); // ユーザーがログアウトした場合はリセット
+      }
     };
-  }, [loadTasks, user]); // userの変更でも再実行
+  }, [user, dataInitialized, loadTasks, loadUserPoints]); // checkAndAwardLoginBonusを削除
 
   // テーマの適用
   useEffect(() => {
@@ -127,6 +148,7 @@ export default function Home() {
         <Feedback />       {/* フィードバック通知 */}
         <DeadlineWarning />{/* 締め切り警告 */}
         <FloatingMenu />   {/* 設定メニュー */}
+        <TaskMigration />  {/* タスク移行ダイアログ */}
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
         {!user ? (
@@ -147,11 +169,12 @@ export default function Home() {
                 <AuthButton />
                 <div className="space-y-4 mb-20">
                   <Dashboard />
+                  <PointsDashboard />
                   <Weather />
                   <AITaskSuggestions />
                   <TaskStats />
-                  <AddTaskWithPriority />
-                  <TaskListWithPriority />
+                  <EnhancedAddTask />
+                  <EnhancedTaskList />
                   <PomodoroStats />
                 </div>
               </div>
@@ -163,7 +186,10 @@ export default function Home() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
                       <AppLogo width={100} height={100} className="mr-4" />
-                      <h1 className="text-3xl font-bold">進捗堂</h1>
+                      <div>
+                        <h1 className="text-3xl font-bold">進捗堂</h1>
+                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.5.0</p>
+                      </div>
                     </div>
                     <AuthButton />
                   </div>
@@ -187,18 +213,23 @@ export default function Home() {
                     {/* タスク追加セクション */}
                     <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                       <h2 className="text-xl font-bold mb-4">📝 新しいタスクを追加</h2>
-                      <AddTaskWithPriority />
+                      <EnhancedAddTask />
                     </motion.div>
                     
                     {/* タスクリストセクション */}
                     <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                       <h2 className="text-xl font-bold mb-4">📋 タスク一覧</h2>
-                      <TaskListWithPriority />
+                      <EnhancedTaskList />
                     </motion.div>
                   </div>
                   
                   {/* 右側のサイドバー */}
                   <div className="col-span-12 md:col-span-4 space-y-6">
+                    {/* ポイントダッシュボード */}
+                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                      <PointsDashboard />
+                    </motion.div>
+                    
                     <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                       <TaskStats />
                     </motion.div>
@@ -210,6 +241,9 @@ export default function Home() {
                     
                     {/* PWAインストールガイド */}
                     <InstallPWAGuide />
+                    
+                    {/* 新機能紹介カード */}
+                    <NewFeaturesCard />
                   </div>
                 </div>
               </div>
@@ -268,6 +302,61 @@ function InstallPWAGuide() {
           <p>• Androidのブラウザ: 「メニュー」→「アプリをインストール」</p>
           <p>• PCのChrome: アドレスバーの右にあるインストールアイコン</p>
         </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * 新機能紹介カードコンポーネント
+ * v1.5.0で追加された新機能を紹介
+ */
+function NewFeaturesCard() {
+  const [showFeatures, setShowFeatures] = useState(true);
+  
+  if (!showFeatures) return null;
+  
+  return (
+    <motion.div 
+      className="p-6 rounded-lg shadow-lg bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 1.2 }}
+    >
+      <div className="flex justify-between items-start">
+        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 新機能追加！</h2>
+        <button
+          onClick={() => setShowFeatures(false)}
+          className="text-purple-500 hover:text-purple-700"
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+      </div>
+      
+      <div className="space-y-2 text-sm text-purple-700">
+        <div className="flex items-center">
+          <span className="mr-2">💎</span>
+          <span>ポイントシステム - タスク完了でポイント獲得</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">🎁</span>
+          <span>ログインボーナス - 連続ログインで特典</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">📝</span>
+          <span>サブタスク - 大きなタスクを細かく分割</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">📄</span>
+          <span>メモ機能 - タスクに詳細を追加</span>
+        </div>
+      </div>
+      
+      <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
+        <p className="text-xs text-purple-600">
+          <strong>v1.5.0の特徴:</strong> より詳細なタスク管理とモチベーション向上のためのゲーミフィケーション要素を追加しました。
+        </p>
       </div>
     </motion.div>
   );

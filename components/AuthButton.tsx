@@ -7,7 +7,7 @@
 
 //import { useEffect } from 'react';
 import { useAuthStore } from '@/store/auth';
-import { useTaskStore } from '@/store/taskStore';
+import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { motion } from 'framer-motion';
 
 /**
@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 export default function AuthButton() {
   // ストアから認証情報を取得
   const { user, loading, loginWithGoogle, logout } = useAuthStore();
-  const { clearTasks } = useTaskStore();
+  const { clearTasks } = useEnhancedTaskStore();
 
   // ログアウト処理のハンドラー
   const handleLogout = async () => {
