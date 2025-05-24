@@ -155,7 +155,6 @@ export default function Home() {
         <Feedback />       {/* フィードバック通知 */}
         <DeadlineWarning />{/* 締め切り警告 */}
         <FloatingMenu />   {/* 設定メニュー */}
-        <TaskMigration />  {/* タスク移行ダイアログ */}
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
         {!user ? (
