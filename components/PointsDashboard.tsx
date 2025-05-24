@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePointStore } from '@/store/pointStore';
 import { useAuthStore } from '@/store/auth';
+import { loginBonusManager } from '@/lib/loginBonusSingleton'; // 🔥 修正: インポートを追加
 
 /**
  * ポイントダッシュボードコンポーネント
@@ -120,6 +121,7 @@ export default function PointsDashboard() {
       case 'login_bonus': return '🎁';
       case 'daily_bonus': return '📅';
       case 'streak_bonus': return '🔥';
+      case 'game_play': return '🎮'; // 🔥 追加: ゲームプレイのアイコン
       default: return '💎';
     }
   };
@@ -133,6 +135,7 @@ export default function PointsDashboard() {
       case 'login_bonus': return 'ログインボーナス';
       case 'daily_bonus': return '日次ボーナス';
       case 'streak_bonus': return '連続ボーナス';
+      case 'game_play': return 'ゲームプレイ'; // 🔥 追加: ゲームプレイのタイプ名
       default: return 'その他';
     }
   };
@@ -248,6 +251,18 @@ export default function PointsDashboard() {
         </div>
       </div>
 
+      {/* 🔥 追加: 開発環境でのデバッグボタン */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-2 bg-gray-100 rounded">
+          <button
+            onClick={handleResetLoginBonus}
+            className="text-xs text-gray-600 hover:text-gray-800"
+          >
+            🔧 ログインボーナスリセット (dev)
+          </button>
+        </div>
+      )}
+
       {/* ポイント履歴 */}
       <AnimatePresence>
         {showHistory && (
@@ -270,7 +285,7 @@ export default function PointsDashboard() {
                     className="flex justify-between items-center bg-gray-50 p-2 rounded text-xs"
                   >
                     <div className="flex items-center">
-                      <span className="mr-2">{getHistoryIcon(history.type)}</span>
+                      <span className="mr-2">{getHistoryIcon(history.type, history.points)}</span>
                       <div>
                         <p className="font-medium">{history.description}</p>
                         <p className="text-gray-500">
@@ -278,8 +293,10 @@ export default function PointsDashboard() {
                         </p>
                       </div>
                     </div>
-                    <span className="font-semibold text-green-600">
-                      +{history.points}
+                    <span className={`font-semibold ${
+                      history.points >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {history.points >= 0 ? '+' : ''}{history.points}
                     </span>
                   </div>
                 ))}
