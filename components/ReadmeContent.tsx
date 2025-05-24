@@ -3,6 +3,7 @@
  * 
  * アプリケーションの使用方法、機能説明、更新履歴などを表示するコンポーネント
  * アプリのドキュメント機能として機能し、ユーザーガイドを提供します
+ * v1.5.0: ゲームセンター機能を含む大幅アップデート
  */
 
 import React from 'react';
@@ -21,7 +22,7 @@ export default function ReadmeContent() {
       <h2 className="text-xl font-bold mb-3">進捗堂 📝✨</h2>
       
       <p className="mb-3">
-        進捗堂 は、AI機能を活用した次世代のタスク管理・ポモドーロアプリです。あなたの生産性を最大化するための様々な機能を提供します。
+        進捗堂 は、AI機能とゲーミフィケーションを活用した次世代のタスク管理・ポモドーロアプリです。タスク完了でポイントを獲得し、ゲームで楽しく消費することで、継続的なモチベーション維持を実現します。
       </p>
       
       {/* 主要機能の説明セクション */}
@@ -43,8 +44,44 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* ポイントシステム */}
+      <h4 className="font-medium mt-3 mb-1">3. ポイントシステム</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          タスク完了やログインボーナスでポイントを獲得できます。獲得したポイントはゲームセンターでのプレイに使用でき、モチベーション維持に役立ちます。
+        </p>
+        <div className="bg-gray-50 p-2 rounded mt-2 text-xs">
+          <strong>ポイント獲得方法:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li>高優先度タスク完了: 15ポイント</li>
+            <li>中優先度タスク完了: 10ポイント</li>
+            <li>低優先度タスク完了: 5ポイント</li>
+            <li>サブタスク完了: 3ポイント</li>
+            <li>ログインボーナス: 10-50ポイント（連続日数に応じて）</li>
+          </ul>
+        </div>
+      </div>
+      
+      {/* ゲームセンター */}
+      <h4 className="font-medium mt-3 mb-1">4. ゲームセンター</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          獲得したポイントでミニゲームを楽しめます。1回のプレイに5ポイント必要で、スコアは自動的に記録・統計されます。
+        </p>
+        <div className="bg-gray-50 p-2 rounded mt-2 text-xs">
+          <strong>利用可能なゲーム:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li><strong>🦕 ディノラン:</strong> Chromeの恐竜ゲーム風アクションゲーム。ジャンプで障害物を避けてスコアを稼ごう</li>
+            <li><strong>🐦 フラッピーバード:</strong> 鳥を操作してパイプの隙間を通り抜けるスキルゲーム</li>
+          </ul>
+          <p className="mt-2 text-orange-600">
+            <strong>【重要】:</strong> リトライも新規プレイ扱いで5ポイント消費されます。ポイント不足時はプレイできません。
+          </p>
+        </div>
+      </div>
+      
       {/* ポモドーロタイマー機能 */}
-      <h4 className="font-medium mt-3 mb-1">3. ポモドーロタイマー</h4>
+      <h4 className="font-medium mt-3 mb-1">5. ポモドーロタイマー</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           ポモドーロテクニックを活用した集中管理ツールです。25分の作業と5分の休憩を繰り返すサイクルで、効率的に作業を進められます。タイマーは画面右下の「⏱️」ボタンからアクセスできます。
@@ -65,8 +102,25 @@ export default function ReadmeContent() {
         </div>
       </div>
       
+      {/* サブタスクとメモ機能 */}
+      <h4 className="font-medium mt-3 mb-1">6. サブタスクとメモ機能</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          大きなタスクを細かいサブタスクに分割して管理できます。また、各タスクにはマークダウン対応のメモを追加できます。
+        </p>
+        <div className="bg-gray-50 p-2 rounded mt-2 text-xs">
+          <strong>機能詳細:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li><strong>サブタスク:</strong> 無制限に追加可能、個別に完了マークが可能</li>
+            <li><strong>進捗表示:</strong> メインタスクの進捗バーでサブタスク完了状況を可視化</li>
+            <li><strong>メモ機能:</strong> マークダウン記法対応で詳細な説明や手順を記録</li>
+            <li><strong>見積もり時間:</strong> タスクの所要時間を事前に設定可能</li>
+          </ul>
+        </div>
+      </div>
+      
       {/* 天気ベースのタスク提案機能 */}
-      <h4 className="font-medium mt-3 mb-1">4. 天気に基づいたタスク提案</h4>
+      <h4 className="font-medium mt-3 mb-1">7. 天気に基づいたタスク提案</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           現在の天気状況（晴れ・雨・雪など）、気温、湿度に基づいて最適なタスクを提案します。天気関連のタスクは青い背景で表示され、環境に配慮した効率的な活動をサポートします。
@@ -74,7 +128,7 @@ export default function ReadmeContent() {
       </div>
       
       {/* BGMプレイヤー機能 */}
-      <h4 className="font-medium mt-3 mb-1">5. BGMプレイヤー</h4>
+      <h4 className="font-medium mt-3 mb-1">8. BGMプレイヤー</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           作業に集中するための環境音楽プレイヤーです。Vaporwave風の落ち着いたインターネットラジオを提供しています。画面右下の「🎵」ボタンからアクセスできます。
@@ -82,7 +136,7 @@ export default function ReadmeContent() {
       </div>
       
       {/* デッドライン管理機能 */}
-      <h4 className="font-medium mt-3 mb-1">6. デッドライン管理</h4>
+      <h4 className="font-medium mt-3 mb-1">9. デッドライン管理</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           期限が近づいているタスクを自動的に検出し、通知します。期限切れや期限間近のタスクは画面上部に警告表示されます。
@@ -90,7 +144,7 @@ export default function ReadmeContent() {
       </div>
       
       {/* PWA機能 */}
-      <h4 className="font-medium mt-3 mb-1">7. PWA対応</h4>
+      <h4 className="font-medium mt-3 mb-1">10. PWA対応</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           進捗堂はPWA（Progressive Web App）に対応しています。ホーム画面に追加すると、アプリのようにオフラインでも利用できます。ブラウザのインストールオプションを使用するか、「共有」→「ホーム画面に追加」で利用できます。
@@ -112,7 +166,13 @@ export default function ReadmeContent() {
             <strong>AIの提案活用:</strong> AIタスク提案セクションから提案されたタスクを追加できます
           </li>
           <li>
-            <strong>タスク管理:</strong> タスクの完了、優先度変更、締め切り設定が可能です
+            <strong>タスク管理:</strong> タスクの完了、優先度変更、締め切り設定、サブタスクの追加が可能です
+          </li>
+          <li>
+            <strong>ポイント獲得:</strong> タスクを完了してポイントを貯めましょう
+          </li>
+          <li>
+            <strong>ゲームプレイ:</strong> ゲームセンタータブで獲得したポイントを使ってゲームを楽しめます
           </li>
           <li>
             <strong>ポモドーロ活用:</strong> タスクの「⏳」ボタンをクリックしてポモドーロを開始します
@@ -130,6 +190,15 @@ export default function ReadmeContent() {
       <h3 className="text-lg font-semibold mt-4 mb-2">💡 ヒントとコツ</h3>
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
+        <p>
+          <strong>・ポイント効率:</strong> 高優先度のタスクを優先して完了すると、より多くのポイントを獲得できます。
+        </p>
+        <p>
+          <strong>・ゲーム戦略:</strong> リトライは新規プレイ扱いで5ポイント消費されるため、集中してプレイしましょう。
+        </p>
+        <p>
+          <strong>・サブタスク活用:</strong> 大きなタスクは細かく分けることで達成感を得やすくなり、ポイントも多く獲得できます。
+        </p>
         <p>
           <strong>・ポモドーロテクニック:</strong> 25分間の集中作業と5分間の休憩を交互に繰り返すことで、脳の集中力を維持します。
         </p>
@@ -161,6 +230,12 @@ export default function ReadmeContent() {
           <strong>・BGMが再生されない:</strong> BGMタブで再生ボタンをクリックして、ブラウザのオーディオ設定を確認してください。
         </p>
         <p>
+          <strong>・ゲームが開始できない:</strong> ポイント残高を確認してください。リトライも含めて1回5ポイント必要です。
+        </p>
+        <p>
+          <strong>・ポイントが反映されない:</strong> タスクを完了してもポイントが増えない場合は、ページを再読み込みしてください。
+        </p>
+        <p>
           <strong>・PWAがインストールできない:</strong> ブラウザがPWAに対応しているか確認してください。iOSではSafari、AndroidではChromeを推奨します。
         </p>
         <p>
@@ -172,6 +247,30 @@ export default function ReadmeContent() {
       <h3 className="text-lg font-semibold mt-4 mb-2">🔄 更新履歴</h3>
 
       {/* 最新バージョン */}
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
+          <div>
+            <p className="font-medium">v1.5.0 (最新)</p>
+            <ul className="list-disc pl-5">
+              <li>🎮 ゲームセンター機能追加：ポイント消費型ミニゲーム機能</li>
+              <li>🦕 ディノランゲーム：Chromeの恐竜ゲーム風アクションゲーム</li>
+              <li>🐦 フラッピーバードゲーム：パイプの隙間を通り抜けるスキルゲーム</li>
+              <li>💎 ポイントシステム拡張：タスク完了、ログインボーナス、ゲーム消費の統合管理</li>
+              <li>📊 ゲーム統計機能：最高スコア、プレイ回数、平均スコア、消費ポイントの記録</li>
+              <li>📝 サブタスク機能：大きなタスクを細かく分割して管理</li>
+              <li>📄 メモ機能：マークダウン対応のタスク詳細記録</li>
+              <li>📈 拡張統計機能：タスクの複雑度計算、進捗可視化</li>
+              <li>💰 ポイント取り消し機能：タスク完了取り消し時の総獲得ポイント減算</li>
+              <li>🎯 見積もり時間機能：タスクの所要時間予測</li>
+              <li>🔄 データ移行機能：既存タスクの新形式への自動移行</li>
+              <li>📱 タブ型UI：タスク管理とゲームセンターの切り替え表示</li>
+              <li>⚡ リアルタイム更新：ゲーム統計・履歴の即座反映</li>
+              <li>🛡️ エラーハンドリング強化：重複処理防止、確実なデータ同期</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
@@ -275,6 +374,7 @@ export default function ReadmeContent() {
         <p><strong>BGM:</strong> Nightwave Plaza</p>
         <p><strong>サウンドエフェクト:</strong> 効果音ラボ、Springin'Sound Stock</p>
         <p><strong>AI機能:</strong> Claude Model by Anthropic</p>
+        <p><strong>ゲーム開発:</strong> HTML5 Canvas & JavaScript</p>
         <p><strong>ホスティング:</strong> Vercel</p>
       </div>
       
@@ -288,7 +388,7 @@ export default function ReadmeContent() {
       
       {/* フッターと著作権表示 */}
       <p className="text-center text-xs text-gray-500 mt-6">
-        &copy; 2025 進捗堂
+        &copy; 2025 進捗堂 - AI搭載タスク管理＆ゲームアプリ
       </p>
     </div>
   );

@@ -3,7 +3,8 @@
  * 
  * ユーザーのポイント獲得・消費・ログインボーナスを管理するZustandストア
  * Firestoreとの連携により、ポイントデータの永続化を提供
- * v1.5.0: タスク完了取り消し時のポイント減算機能を追加
+ * v1.5.1: タスク完了取り消し時の総獲得ポイントも減算するように変更
+ * v1.6.0: ゲームセンター機能追加でポイント消費機能を拡張
  */
 
 import { create } from "zustand";
@@ -31,10 +32,11 @@ import { loginBonusManager } from "@/lib/loginBonusSingleton";
 export interface PointHistory {
   id?: string;
   userId: string;
-  type: 'task_completion' | 'login_bonus' | 'daily_bonus' | 'streak_bonus';
+  type: 'task_completion' | 'login_bonus' | 'daily_bonus' | 'streak_bonus' | 'game_play';
   points: number;               // 正の値は獲得、負の値は減算
   description: string;
   taskId?: string;              // タスク完了の場合のタスクID
+  gameType?: 'dino' | 'flappy'; // ゲームプレイの場合のゲームタイプ
   date: string;                 // YYYY-MM-DD形式
   timestamp: number;            // タイムスタンプ
 }
@@ -44,7 +46,7 @@ export interface PointHistory {
  */
 export interface UserPoints {
   userId: string;
-  totalPoints: number;           // 総獲得ポイント（生涯実績、減算されない）
+  totalPoints: number;           // 総獲得ポイント（v1.5.1: 取り消し時は減算される）
   currentPoints: number;         // 現在のポイント残高（減算される）
   lastLoginDate?: string;        // 最後のログイン日（YYYY-MM-DD）
   loginStreak: number;          // 連続ログイン日数
@@ -65,8 +67,8 @@ interface PointState {
   loadPointHistory: () => Promise<void>;
   
   // ポイント操作
-  addPoints: (type: PointHistory['type'], points: number, description: string, taskId?: string) => Promise<void>;
-  removePoints: (type: PointHistory['type'], points: number, description: string, taskId?: string) => Promise<void>;
+  addPoints: (type: PointHistory['type'], points: number, description: string, taskId?: string, gameType?: 'dino' | 'flappy') => Promise<void>;
+  removePoints: (type: PointHistory['type'], points: number, description: string, taskId?: string, affectTotal?: boolean, gameType?: 'dino' | 'flappy') => Promise<void>;
   
   // タスク完了時のポイント付与
   awardTaskCompletionPoints: (taskId: string, taskText: string, priority: PriorityLevel) => Promise<number>;
@@ -217,7 +219,7 @@ export const usePointStore = create<PointState>((set, get) => ({
   /**
    * ポイントを追加する
    */
-  addPoints: async (type, points, description, taskId) => {
+  addPoints: async (type, points, description, taskId, gameType) => {
     const user = useAuthStore.getState().user;
     if (!user || points <= 0) return;
 
@@ -232,7 +234,8 @@ export const usePointStore = create<PointState>((set, get) => ({
         description,
         date: today,
         timestamp: Date.now(),
-        ...(taskId ? { taskId } : {})
+        ...(taskId ? { taskId } : {}),
+        ...(gameType ? { gameType } : {})
       };
       
       await addDoc(collection(db, "pointHistory"), historyData);
@@ -266,8 +269,14 @@ export const usePointStore = create<PointState>((set, get) => ({
 
   /**
    * ポイントを減算する
+   * @param type ポイントのタイプ
+   * @param points 減算するポイント数
+   * @param description 説明
+   * @param taskId タスクID（オプション）
+   * @param affectTotal 総獲得ポイントにも影響を与えるかどうか（デフォルト: false）
+   * @param gameType ゲームタイプ（オプション）
    */
-  removePoints: async (type, points, description, taskId) => {
+  removePoints: async (type, points, description, taskId, affectTotal = false, gameType) => {
     const user = useAuthStore.getState().user;
     if (!user || points <= 0) return;
 
@@ -282,7 +291,8 @@ export const usePointStore = create<PointState>((set, get) => ({
         description,
         date: today,
         timestamp: Date.now(),
-        ...(taskId ? { taskId } : {})
+        ...(taskId ? { taskId } : {}),
+        ...(gameType ? { gameType } : {})
       };
       
       await addDoc(collection(db, "pointHistory"), historyData);
@@ -295,16 +305,27 @@ export const usePointStore = create<PointState>((set, get) => ({
         // 現在のポイントが減算分より少ない場合は0にする
         const newCurrentPoints = Math.max(0, currentUserPoints.currentPoints - points);
         
-        await updateDoc(userPointsRef, {
+        // 更新データを準備
+        const updateData: any = {
           currentPoints: newCurrentPoints
-          // totalPointsは変更しない（生涯獲得ポイントとして保持）
-        });
+        };
+        
+        // affectTotalフラグがtrueの場合、総獲得ポイントも減算
+        if (affectTotal) {
+          const newTotalPoints = Math.max(0, currentUserPoints.totalPoints - points);
+          updateData.totalPoints = newTotalPoints;
+        }
+        
+        await updateDoc(userPointsRef, updateData);
         
         // ローカル状態を更新
         set({
           userPoints: {
             ...currentUserPoints,
-            currentPoints: newCurrentPoints
+            currentPoints: newCurrentPoints,
+            totalPoints: affectTotal 
+              ? Math.max(0, currentUserPoints.totalPoints - points)
+              : currentUserPoints.totalPoints
           }
         });
       }
@@ -335,6 +356,7 @@ export const usePointStore = create<PointState>((set, get) => ({
 
   /**
    * タスク完了取り消し時のポイント減算
+   * v1.5.1: 総獲得ポイントも減算するように変更
    */
   revokeTaskCompletionPoints: async (taskId, taskText) => {
     const user = useAuthStore.getState().user;
@@ -362,13 +384,15 @@ export const usePointStore = create<PointState>((set, get) => ({
       
       if (totalRevokedPoints > 0) {
         const description = `タスク完了取り消し: ${taskText.substring(0, 20)}${taskText.length > 20 ? '...' : ''}`;
-        await get().removePoints('task_completion', totalRevokedPoints, description, taskId);
+        
+        // 🆕 重要な変更: affectTotal を true に設定して総獲得ポイントも減算
+        await get().removePoints('task_completion', totalRevokedPoints, description, taskId, true);
         
         // フィードバック表示
         const feedbackStore = useFeedbackStore.getState();
-        feedbackStore.setMessage(`📤 ${totalRevokedPoints}ポイント減算`);
+        feedbackStore.setMessage(`📤 ${totalRevokedPoints}ポイント減算（総獲得ポイントからも減算）`);
         
-        console.log(`タスク完了取り消しで${totalRevokedPoints}ポイントを減算しました`);
+        console.log(`タスク完了取り消しで${totalRevokedPoints}ポイントを減算しました（総獲得ポイントも減算）`);
       }
       
       return totalRevokedPoints;
@@ -380,6 +404,7 @@ export const usePointStore = create<PointState>((set, get) => ({
 
   /**
    * サブタスク完了取り消し時のポイント減算
+   * v1.5.1: 総獲得ポイントも減算するように変更
    */
   revokeSubTaskCompletionPoints: async (taskId, subTaskText) => {
     const user = useAuthStore.getState().user;
@@ -412,13 +437,15 @@ export const usePointStore = create<PointState>((set, get) => ({
       
       if (revokedPoints > 0) {
         const description = `サブタスク完了取り消し: ${subTaskText.substring(0, 15)}...`;
-        await get().removePoints('task_completion', revokedPoints, description, taskId);
+        
+        // 🆕 重要な変更: affectTotal を true に設定して総獲得ポイントも減算
+        await get().removePoints('task_completion', revokedPoints, description, taskId, true);
         
         // フィードバック表示
         const feedbackStore = useFeedbackStore.getState();
-        feedbackStore.setMessage(`📤 サブタスク取り消し: ${revokedPoints}ポイント減算`);
+        feedbackStore.setMessage(`📤 サブタスク取り消し: ${revokedPoints}ポイント減算（総獲得ポイントからも減算）`);
         
-        console.log(`サブタスク完了取り消しで${revokedPoints}ポイントを減算しました`);
+        console.log(`サブタスク完了取り消しで${revokedPoints}ポイントを減算しました（総獲得ポイントも減算）`);
       }
       
       return revokedPoints;

@@ -3,13 +3,14 @@
  * 
  * アプリケーションのメインビューを提供
  * レスポンシブデザインに対応し、モバイルとデスクトップで最適なUIを表示
- * 新機能：ポイントシステム、サブタスク、メモ機能を統合
+ * v1.5.0: ゲームセンター機能を追加
  */
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useEnhancedTaskStore } from "@/store/enhancedTaskStore";
 import { usePointStore } from "@/store/pointStore";
+import { useGameCenterStore } from "@/store/gameCenterStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useAuthStore } from "@/store/auth";
 import { useDevice } from "@/hooks/useDevice";
@@ -31,6 +32,7 @@ import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
 import TaskMigration from "@/components/TaskMigration";
+import GameCenter from "@/components/GameCenter";
 
 // window.workboxのための型拡張
 declare global {
@@ -46,11 +48,13 @@ declare global {
 export default function Home() {
   const { loadTasks } = useEnhancedTaskStore();
   const { loadUserPoints, checkAndAwardLoginBonus } = usePointStore();
+  const { loadGameHistory, loadGameStats } = useGameCenterStore();
   const { bgColor } = useThemeStore();
   const { user } = useAuthStore(); // 認証状態を取得
   const isMobile = useDevice(); // デバイスタイプを判定
   const [mounted, setMounted] = useState(false);
   const [dataInitialized, setDataInitialized] = useState(false); // 初期化フラグ
+  const [currentTab, setCurrentTab] = useState<'tasks' | 'games'>('tasks'); // タブ状態
 
   // クライアントサイドのみの処理を確認するためのマウント状態
   useEffect(() => {
@@ -67,6 +71,10 @@ export default function Home() {
           // タスクとポイントデータをロード
           await loadTasks();
           await loadUserPoints();
+          
+          // ゲームセンターデータをロード
+          await loadGameHistory();
+          await loadGameStats();
           
           // ログインボーナスはポイントダッシュボードで処理するため、ここでは実行しない
           // await checkAndAwardLoginBonus();
@@ -87,7 +95,7 @@ export default function Home() {
         setDataInitialized(false); // ユーザーがログアウトした場合はリセット
       }
     };
-  }, [user, dataInitialized, loadTasks, loadUserPoints]); // checkAndAwardLoginBonusを削除
+  }, [user, dataInitialized, loadTasks, loadUserPoints, loadGameHistory, loadGameStats]);
 
   // テーマの適用
   useEffect(() => {
@@ -114,7 +122,7 @@ export default function Home() {
     return (
       <>
         <Head>
-          <title>進捗堂 - AI搭載タスク管理アプリ</title>
+          <title>進捗堂</title>
           <meta name="description" content="AIを活用したタスク管理とポモドーロタイマーアプリ" />
         </Head>
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -133,7 +141,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>進捗堂 - AI搭載タスク管理アプリ</title>
+        <title>進捗堂</title>
         <meta name="description" content="AIを活用したタスク管理とポモドーロタイマーアプリ" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </Head>
@@ -167,15 +175,50 @@ export default function Home() {
                 </div>
                 
                 <AuthButton />
+                
+                {/* タブナビゲーション - モバイル版 */}
+                <div className="flex mb-4 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setCurrentTab('tasks')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      currentTab === 'tasks'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    📋 タスク管理
+                  </button>
+                  <button
+                    onClick={() => setCurrentTab('games')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      currentTab === 'games'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    🎮 ゲームセンター
+                  </button>
+                </div>
+
+                {/* コンテンツエリア - モバイル版 */}
                 <div className="space-y-4 mb-20">
-                  <Dashboard />
-                  <PointsDashboard />
-                  <Weather />
-                  <AITaskSuggestions />
-                  <TaskStats />
-                  <EnhancedAddTask />
-                  <EnhancedTaskList />
-                  <PomodoroStats />
+                  {currentTab === 'tasks' ? (
+                    <>
+                      <Dashboard />
+                      <PointsDashboard />
+                      <Weather />
+                      <AITaskSuggestions />
+                      <TaskStats />
+                      <EnhancedAddTask />
+                      <EnhancedTaskList />
+                      <PomodoroStats />
+                    </>
+                  ) : (
+                    <>
+                      <PointsDashboard />
+                      <GameCenter />
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
@@ -193,59 +236,107 @@ export default function Home() {
                     </div>
                     <AuthButton />
                   </div>
+                  
+                  {/* タブナビゲーション - デスクトップ版 */}
+                  <div className="flex mt-6 space-x-1">
+                    <button
+                      onClick={() => setCurrentTab('tasks')}
+                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                        currentTab === 'tasks'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      📋 タスク管理
+                    </button>
+                    <button
+                      onClick={() => setCurrentTab('games')}
+                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                        currentTab === 'games'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      🎮 ゲームセンター
+                    </button>
+                  </div>
                 </motion.div>
                 
-                <div className="grid grid-cols-12 gap-6 mb-20">
-                  {/* 左側のコンテンツ */}
-                  <div className="col-span-12 md:col-span-8 space-y-6">
-                    {/* ダッシュボードと天気のグリッド */}
-                    <div className="grid grid-cols-2 gap-6">
-                      <Dashboard />
-                      <Weather />
+                {/* コンテンツエリア - デスクトップ版 */}
+                {currentTab === 'tasks' ? (
+                  <div className="grid grid-cols-12 gap-6 mb-20">
+                    {/* 左側のコンテンツ */}
+                    <div className="col-span-12 md:col-span-8 space-y-6">
+                      {/* ダッシュボードと天気のグリッド */}
+                      <div className="grid grid-cols-2 gap-6">
+                        <Dashboard />
+                        <Weather />
+                      </div>
+                      
+                      {/* AIアシスタントセクション */}
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <h2 className="text-xl font-bold mb-4">🤖 AIアシスタント</h2>
+                        <AITaskSuggestions />
+                      </motion.div>
+                      
+                      {/* タスク追加セクション */}
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <h2 className="text-xl font-bold mb-4">📝 新しいタスクを追加</h2>
+                        <EnhancedAddTask />
+                      </motion.div>
+                      
+                      {/* タスクリストセクション */}
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <h2 className="text-xl font-bold mb-4">📋 タスク一覧</h2>
+                        <EnhancedTaskList />
+                      </motion.div>
                     </div>
                     
-                    {/* AIアシスタントセクション */}
-                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                      <h2 className="text-xl font-bold mb-4">🤖 AIアシスタント</h2>
-                      <AITaskSuggestions />
-                    </motion.div>
-                    
-                    {/* タスク追加セクション */}
-                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                      <h2 className="text-xl font-bold mb-4">📝 新しいタスクを追加</h2>
-                      <EnhancedAddTask />
-                    </motion.div>
-                    
-                    {/* タスクリストセクション */}
-                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                      <h2 className="text-xl font-bold mb-4">📋 タスク一覧</h2>
-                      <EnhancedTaskList />
-                    </motion.div>
+                    {/* 右側のサイドバー */}
+                    <div className="col-span-12 md:col-span-4 space-y-6">
+                      {/* ポイントダッシュボード */}
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <PointsDashboard />
+                      </motion.div>
+                      
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <TaskStats />
+                      </motion.div>
+                      
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <h2 className="text-xl font-bold mb-4">⏳ ポモドーロタイマー</h2>
+                        <PomodoroStats />
+                      </motion.div>
+                      
+                      {/* PWAインストールガイド */}
+                      <InstallPWAGuide />
+                      
+                      {/* 新機能紹介カード */}
+                      <NewFeaturesCard />
+                    </div>
                   </div>
-                  
-                  {/* 右側のサイドバー */}
-                  <div className="col-span-12 md:col-span-4 space-y-6">
-                    {/* ポイントダッシュボード */}
-                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                      <PointsDashboard />
-                    </motion.div>
+                ) : (
+                  // ゲームセンタータブのコンテンツ
+                  <div className="grid grid-cols-12 gap-6 mb-20">
+                    {/* ゲームセンターメイン */}
+                    <div className="col-span-12 md:col-span-8">
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <GameCenter />
+                      </motion.div>
+                    </div>
                     
-                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                      <TaskStats />
-                    </motion.div>
-                    
-                    <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                      <h2 className="text-xl font-bold mb-4">⏳ ポモドーロタイマー</h2>
-                      <PomodoroStats />
-                    </motion.div>
-                    
-                    {/* PWAインストールガイド */}
-                    <InstallPWAGuide />
-                    
-                    {/* 新機能紹介カード */}
-                    <NewFeaturesCard />
+                    {/* ゲームセンターサイドバー */}
+                    <div className="col-span-12 md:col-span-4 space-y-6">
+                      {/* ポイントダッシュボード */}
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <PointsDashboard />
+                      </motion.div>
+                      
+                      {/* ゲームセンター紹介カード */}
+                      <GameCenterGuide />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </>
@@ -309,7 +400,7 @@ function InstallPWAGuide() {
 
 /**
  * 新機能紹介カードコンポーネント
- * v1.5.0で追加された新機能を紹介
+ * v1.6.0で追加された新機能を紹介
  */
 function NewFeaturesCard() {
   const [showFeatures, setShowFeatures] = useState(true);
@@ -336,27 +427,73 @@ function NewFeaturesCard() {
       
       <div className="space-y-2 text-sm text-purple-700">
         <div className="flex items-center">
-          <span className="mr-2">💎</span>
-          <span>ポイントシステム - タスク完了でポイント獲得</span>
+          <span className="mr-2">🎮</span>
+          <span>ゲームセンター - ポイントでゲームプレイ</span>
         </div>
         <div className="flex items-center">
-          <span className="mr-2">🎁</span>
-          <span>ログインボーナス - 連続ログインで特典</span>
+          <span className="mr-2">🦕</span>
+          <span>ディノラン - ジャンプアクションゲーム</span>
         </div>
         <div className="flex items-center">
-          <span className="mr-2">📝</span>
-          <span>サブタスク - 大きなタスクを細かく分割</span>
+          <span className="mr-2">🐦</span>
+          <span>フラッピーバード - 羽ばたきゲーム</span>
         </div>
         <div className="flex items-center">
-          <span className="mr-2">📄</span>
-          <span>メモ機能 - タスクに詳細を追加</span>
+          <span className="mr-2">📊</span>
+          <span>ゲーム統計 - スコアランキング機能</span>
         </div>
       </div>
       
       <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
         <p className="text-xs text-purple-600">
-          <strong>v1.5.0の特徴:</strong> より詳細なタスク管理とモチベーション向上のためのゲーミフィケーション要素を追加しました。
+          <strong>v1.6.0の特徴:</strong> タスク管理で貯めたポイントでゲームを楽しみ、よりモチベーションを維持できるゲーミフィケーション機能を追加しました。
         </p>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * ゲームセンター紹介カードコンポーネント
+ */
+function GameCenterGuide() {
+  const [showGuide, setShowGuide] = useState(true);
+  
+  if (!showGuide) return null;
+  
+  return (
+    <motion.div 
+      className="p-6 rounded-lg shadow-lg bg-gradient-to-r from-green-50 to-blue-50 border border-green-200"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.3 }}
+    >
+      <div className="flex justify-between items-start">
+        <h2 className="text-lg font-bold text-green-800 mb-3">🎮 ゲームセンターガイド</h2>
+        <button
+          onClick={() => setShowGuide(false)}
+          className="text-green-500 hover:text-green-700"
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+      </div>
+      
+      <div className="space-y-3 text-sm text-green-700">
+        <div className="bg-white p-3 rounded-lg border border-green-100">
+          <p className="font-medium text-green-800 mb-1">💰 ポイント消費システム</p>
+          <p>1回のプレイに5ポイント必要です。タスクを完了してポイントを貯めましょう！</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-green-100">
+          <p className="font-medium text-green-800 mb-1">🏆 スコア記録</p>
+          <p>最高スコア、平均スコア、プレイ回数が自動的に記録されます。</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-green-100">
+          <p className="font-medium text-green-800 mb-1">🎯 ゲームの種類</p>
+          <p>• ディノラン: ジャンプで障害物回避<br/>• フラッピーバード: パイプの隙間を通過</p>
+        </div>
       </div>
     </motion.div>
   );
