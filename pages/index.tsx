@@ -31,7 +31,6 @@ import PomodoroStats from "@/components/PomodoroStats";
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
-import TaskMigration from "@/components/TaskMigration";
 import GameCenter from "@/components/GameCenter";
 
 // window.workboxのための型拡張
