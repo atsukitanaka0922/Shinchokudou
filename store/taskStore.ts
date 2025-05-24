@@ -24,7 +24,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { usePomodoroStore } from "@/store/pomodoroStore";
 import { useFeedbackStore } from "@/store/feedbackStore";
-import { usePointsStore } from "@/store/pointsStore";
+import { usePointStore } from "@/store/pointStore";
 import { PriorityLevel } from "@/lib/aiPriorityAssignment";
 import { 
   getSubTasksByParentId, 
