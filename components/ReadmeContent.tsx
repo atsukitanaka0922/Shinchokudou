@@ -3,6 +3,7 @@
  * 
  * アプリケーションの使用方法、機能説明、更新履歴などを表示するコンポーネント
  * アプリのドキュメント機能として機能し、ユーザーガイドを提供します
+ * v1.5.1: スマホゲーム動作速度問題修正・レスポンシブデザイン対応
  */
 
 import React from 'react';
@@ -21,7 +22,7 @@ export default function ReadmeContent() {
       <h2 className="text-xl font-bold mb-3">進捗堂 📝✨</h2>
       
       <p className="mb-3">
-        進捗堂 は、AI機能を活用した次世代のタスク管理・ポモドーロアプリです。あなたの生産性を最大化するための様々な機能を提供します。
+        進捗堂 は、AI機能とゲーミフィケーションを活用した次世代のタスク管理・ポモドーロアプリです。タスク完了でポイントを獲得し、ゲームで楽しく消費することで、継続的なモチベーション維持を実現します。
       </p>
       
       {/* 主要機能の説明セクション */}
@@ -43,8 +44,47 @@ export default function ReadmeContent() {
         </p>
       </div>
       
+      {/* ポイントシステム */}
+      <h4 className="font-medium mt-3 mb-1">3. ポイントシステム</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          タスク完了やログインボーナスでポイントを獲得できます。獲得したポイントはゲームセンターでのプレイに使用でき、モチベーション維持に役立ちます。
+        </p>
+        <div className="bg-gray-50 p-2 rounded mt-2 text-xs">
+          <strong>ポイント獲得方法:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li>高優先度タスク完了: 15ポイント</li>
+            <li>中優先度タスク完了: 10ポイント</li>
+            <li>低優先度タスク完了: 5ポイント</li>
+            <li>サブタスク完了: 3ポイント</li>
+            <li>ログインボーナス: 10-50ポイント（連続日数に応じて）</li>
+          </ul>
+        </div>
+      </div>
+      
+      {/* ゲームセンター */}
+      <h4 className="font-medium mt-3 mb-1">4. ゲームセンター</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          獲得したポイントでミニゲームを楽しめます。1回のプレイに5ポイント必要で、スコアは自動的に記録・統計されます。
+        </p>
+        <div className="bg-gray-50 p-2 rounded mt-2 text-xs">
+          <strong>利用可能なゲーム:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li><strong>🦕 ディノラン:</strong> Chromeの恐竜ゲーム風アクションゲーム。ジャンプで障害物を避けてスコアを稼ごう</li>
+            <li><strong>🐦 フラッピーバード:</strong> 鳥を操作してパイプの隙間を通り抜けるスキルゲーム</li>
+          </ul>
+          <p className="mt-2 text-orange-600">
+            <strong>【重要】:</strong> リトライも新規プレイ扱いで5ポイント消費されます。ポイント不足時はプレイできません。
+          </p>
+          <p className="mt-1 text-blue-600">
+            <strong>【v1.5.1で改善】:</strong> スマートフォンでのゲーム動作速度を最適化し、画面サイズに応じたレスポンシブデザインを実装しました。ディノランでの表示位置問題とフラッピーバードでの誤操作問題も解決済みです。より快適にプレイできます！
+          </p>
+        </div>
+      </div>
+      
       {/* ポモドーロタイマー機能 */}
-      <h4 className="font-medium mt-3 mb-1">3. ポモドーロタイマー</h4>
+      <h4 className="font-medium mt-3 mb-1">5. ポモドーロタイマー</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           ポモドーロテクニックを活用した集中管理ツールです。25分の作業と5分の休憩を繰り返すサイクルで、効率的に作業を進められます。タイマーは画面右下の「⏱️」ボタンからアクセスできます。
@@ -65,8 +105,25 @@ export default function ReadmeContent() {
         </div>
       </div>
       
+      {/* サブタスクとメモ機能 */}
+      <h4 className="font-medium mt-3 mb-1">6. サブタスクとメモ機能</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          大きなタスクを細かいサブタスクに分割して管理できます。また、各タスクにはマークダウン対応のメモを追加できます。
+        </p>
+        <div className="bg-gray-50 p-2 rounded mt-2 text-xs">
+          <strong>機能詳細:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li><strong>サブタスク:</strong> 無制限に追加可能、個別に完了マークが可能</li>
+            <li><strong>進捗表示:</strong> メインタスクの進捗バーでサブタスク完了状況を可視化</li>
+            <li><strong>メモ機能:</strong> マークダウン記法対応で詳細な説明や手順を記録</li>
+            <li><strong>見積もり時間:</strong> タスクの所要時間を事前に設定可能</li>
+          </ul>
+        </div>
+      </div>
+      
       {/* 天気ベースのタスク提案機能 */}
-      <h4 className="font-medium mt-3 mb-1">4. 天気に基づいたタスク提案</h4>
+      <h4 className="font-medium mt-3 mb-1">7. 天気に基づいたタスク提案</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           現在の天気状況（晴れ・雨・雪など）、気温、湿度に基づいて最適なタスクを提案します。天気関連のタスクは青い背景で表示され、環境に配慮した効率的な活動をサポートします。
@@ -74,7 +131,7 @@ export default function ReadmeContent() {
       </div>
       
       {/* BGMプレイヤー機能 */}
-      <h4 className="font-medium mt-3 mb-1">5. BGMプレイヤー</h4>
+      <h4 className="font-medium mt-3 mb-1">8. BGMプレイヤー</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           作業に集中するための環境音楽プレイヤーです。Vaporwave風の落ち着いたインターネットラジオを提供しています。画面右下の「🎵」ボタンからアクセスできます。
@@ -82,7 +139,7 @@ export default function ReadmeContent() {
       </div>
       
       {/* デッドライン管理機能 */}
-      <h4 className="font-medium mt-3 mb-1">6. デッドライン管理</h4>
+      <h4 className="font-medium mt-3 mb-1">9. デッドライン管理</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           期限が近づいているタスクを自動的に検出し、通知します。期限切れや期限間近のタスクは画面上部に警告表示されます。
@@ -90,7 +147,7 @@ export default function ReadmeContent() {
       </div>
       
       {/* PWA機能 */}
-      <h4 className="font-medium mt-3 mb-1">7. PWA対応</h4>
+      <h4 className="font-medium mt-3 mb-1">10. PWA対応</h4>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           進捗堂はPWA（Progressive Web App）に対応しています。ホーム画面に追加すると、アプリのようにオフラインでも利用できます。ブラウザのインストールオプションを使用するか、「共有」→「ホーム画面に追加」で利用できます。
@@ -112,7 +169,13 @@ export default function ReadmeContent() {
             <strong>AIの提案活用:</strong> AIタスク提案セクションから提案されたタスクを追加できます
           </li>
           <li>
-            <strong>タスク管理:</strong> タスクの完了、優先度変更、締め切り設定が可能です
+            <strong>タスク管理:</strong> タスクの完了、優先度変更、締め切り設定、サブタスクの追加が可能です
+          </li>
+          <li>
+            <strong>ポイント獲得:</strong> タスクを完了してポイントを貯めましょう
+          </li>
+          <li>
+            <strong>ゲームプレイ:</strong> ゲームセンタータブで獲得したポイントを使ってゲームを楽しめます
           </li>
           <li>
             <strong>ポモドーロ活用:</strong> タスクの「⏳」ボタンをクリックしてポモドーロを開始します
@@ -131,6 +194,15 @@ export default function ReadmeContent() {
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
         <p>
+          <strong>・ポイント効率:</strong> 高優先度のタスクを優先して完了すると、より多くのポイントを獲得できます。
+        </p>
+        <p>
+          <strong>・ゲーム戦略:</strong> リトライは新規プレイ扱いで5ポイント消費されるため、集中してプレイしましょう。
+        </p>
+        <p>
+          <strong>・サブタスク活用:</strong> 大きなタスクは細かく分けることで達成感を得やすくなり、ポイントも多く獲得できます。
+        </p>
+        <p>
           <strong>・ポモドーロテクニック:</strong> 25分間の集中作業と5分間の休憩を交互に繰り返すことで、脳の集中力を維持します。
         </p>
         <p>
@@ -144,6 +216,9 @@ export default function ReadmeContent() {
         </p>
         <p>
           <strong>・オフラインでの使用:</strong> PWAとしてインストールすると、インターネット接続が不安定な環境でも利用できます。
+        </p>
+        <p>
+          <strong>・スマホゲーム:</strong> v1.5.1でスマートフォンでのゲーム動作とレスポンシブデザインを最適化しました。ディノランの表示問題とフラッピーバードの誤操作問題も解決済みです。快適にプレイできます！
         </p>
       </div>
       
@@ -161,47 +236,77 @@ export default function ReadmeContent() {
           <strong>・BGMが再生されない:</strong> BGMタブで再生ボタンをクリックして、ブラウザのオーディオ設定を確認してください。
         </p>
         <p>
+          <strong>・ゲームが開始できない:</strong> ポイント残高を確認してください。リトライも含めて1回5ポイント必要です。
+        </p>
+        <p>
+          <strong>・ゲーム動作が早すぎる（修正済み）:</strong> v1.5.1でスマートフォンでのゲーム動作速度を最適化しました。問題が解決されない場合はページを再読み込みしてください。
+        </p>
+        <p>
+          <strong>・ゲーム画面がはみ出す（修正済み）:</strong> v1.5.1でスマートフォンの縦画面に最適化されたレスポンシブデザインを実装しました。ゲーム画面が自動的に画面サイズに調整されます。
+        </p>
+        <p>
+          <strong>・ディノランで恐竜が見えない（修正済み）:</strong> v1.5.1で恐竜と障害物の位置計算を完全修正しました。恐竜が床をすり抜けることなく、確実に表示されるようになりました。
+        </p>
+        <p>
+          <strong>・フラッピーバードで誤操作（修正済み）:</strong> v1.5.1でゲームオーバー後3秒間の操作無効化機能を追加しました。連打による誤操作を防げます。
+        </p>
+        <p>
+          <strong>・ポイントが反映されない:</strong> タスクを完了してもポイントが増えない場合は、ページを再読み込みしてください。
+        </p>
+        <p>
           <strong>・PWAがインストールできない:</strong> ブラウザがPWAに対応しているか確認してください。iOSではSafari、AndroidではChromeを推奨します。
         </p>
         <p>
           <strong>・メール認証メールが届かない:</strong> 迷惑メールフォルダを確認し、認証に関するメールがフィルタリングされていないか確認してください。
-        </p>
-        <p>
-          <strong>・スマホでゲームが早すぎる:</strong> v1.5.1でスマホ向けのフレームレート調整を行いました。問題が続く場合は設定を確認してください。
         </p>
       </div>
       
       {/* 更新履歴セクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🔄 更新履歴</h3>
 
-      {/* 最新バージョン v1.5.1 */}
+      {/* 最新バージョン */}
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium">v1.5.1</p>
+            <p className="font-medium">v1.5.1 (最新)</p>
             <ul className="list-disc pl-5">
-              <li>🎮 スマホでのゲームセンターの動作速度を最適化</li>
-              <li>📱 スネークゲームとテトリスのフレームレート調整（スマホ：デスクトップより遅く設定）</li>
-              <li>🕹️ スマホ用タッチコントロールの応答性改善</li>
-              <li>⚡ 記憶ゲームと反応速度ゲームのタイミング調整</li>
-              <li>🔧 デバイス判定ロジックの改善</li>
+              <li>📱 スマートフォンでのゲーム動作速度問題を修正</li>
+              <li>⚡ ゲームのフレームレート制御を60FPSに統一</li>
+              <li>🎮 高リフレッシュレート端末でのゲーム動作を最適化</li>
+              <li>🔧 タッチイベントの重複処理を防止</li>
+              <li>🏃‍♂️ ディノランゲーム: 恐竜が床をすり抜ける問題を完全修正</li>
+              <li>🦕 ディノランゲーム: スマホ向けサイズ・位置計算を完全修正</li>
+              <li>🐦 フラッピーバードゲーム: ゲームオーバー後3秒間の操作無効化機能追加</li>
+              <li>📐 レスポンシブデザイン対応：スマホの縦画面でゲーム画面が最適化</li>
+              <li>📏 キャンバスサイズ自動調整：画面サイズに応じてゲーム要素のサイズを調整</li>
+              <li>🎯 スマホ専用UI：タッチ操作に最適化されたゲーム説明文</li>
+              <li>⏱️ リアルタイムカウントダウン：フラッピーバードでの待機時間表示</li>
+              <li>🛠️ デバッグ機能：開発環境でのゲーム要素境界表示</li>
+              <li>📚 ヘルプドキュメントにゲーム最適化情報を追加</li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* 過去のバージョン */}
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
             <p className="font-medium">v1.5.0</p>
             <ul className="list-disc pl-5">
-              <li>💎 ポイントシステム：タスク完了でポイント獲得</li>
-              <li>🎁 ログインボーナス：連続ログインで特典</li>
-              <li>📝 サブタスク：大きなタスクを細かく分割</li>
-              <li>📄 メモ機能：タスクに詳細を追加</li>
-              <li>🎮 ゲームセンター：ミニゲーム集</li>
-              <li>🔄 データ移行システム：既存ユーザーの自動移行</li>
+              <li>🎮 ゲームセンター機能追加：ポイント消費型ミニゲーム機能</li>
+              <li>🦕 ディノランゲーム：Chromeの恐竜ゲーム風アクションゲーム</li>
+              <li>🐦 フラッピーバードゲーム：パイプの隙間を通り抜けるスキルゲーム</li>
+              <li>💎 ポイントシステム拡張：タスク完了、ログインボーナス、ゲーム消費の統合管理</li>
+              <li>📊 ゲーム統計機能：最高スコア、プレイ回数、平均スコア、消費ポイントの記録</li>
+              <li>📝 サブタスク機能：大きなタスクを細かく分割して管理</li>
+              <li>📄 メモ機能：マークダウン対応のタスク詳細記録</li>
+              <li>📈 拡張統計機能：タスクの複雑度計算、進捗可視化</li>
+              <li>💰 ポイント取り消し機能：タスク完了取り消し時の総獲得ポイント減算</li>
+              <li>🎯 見積もり時間機能：タスクの所要時間予測</li>
+              <li>🔄 データ移行機能：既存タスクの新形式への自動移行</li>
+              <li>📱 タブ型UI：タスク管理とゲームセンターの切り替え表示</li>
+              <li>⚡ リアルタイム更新：ゲーム統計・履歴の即座反映</li>
+              <li>🛡️ エラーハンドリング強化：重複処理防止、確実なデータ同期</li>
             </ul>
           </div>
         </div>
@@ -225,12 +330,13 @@ export default function ReadmeContent() {
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium">v1.3.1</p>
+            <p className="font-medium">v1.3.0</p>
             <ul className="list-disc pl-5">
-              <li>iOSダークモード時のテキスト表示問題を修正</li>
-              <li>天気データの統合サービスを実装し、タスク提案とダッシュボードの天気表示を同期</li>
-              <li>天気に基づくタスク提案の精度向上（霧、嵐などの天気状態に対応）</li>
-              <li>天気データキャッシュ機能の追加によるパフォーマンス改善</li>
+              <li>AI優先度自動設定機能の追加</li>
+              <li>BGMプレイヤー機能の追加</li>
+              <li>ポモドーロタイマーの改善</li>
+              <li>UI/UXの大幅改善</li>
+              <li>ログインボーナス機能の追加</li>
             </ul>
           </div>
         </div>
@@ -239,166 +345,94 @@ export default function ReadmeContent() {
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium">v1.3.0</p>
+            <p className="font-medium">v1.2.0</p>
             <ul className="list-disc pl-5">
-              <li>UIの大幅改善</li>
+              <li>天気ベースのタスク提案機能追加</li>
+              <li>デッドライン管理機能の強化</li>
+              <li>ポイントシステムの基盤実装</li>
+              <li>タスク統計機能の追加</li>
             </ul>
           </div>
         </div>
       </div>
-      
-      {/* その他の過去のバージョン */}
+
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
-          <div>
-            <p className="font-medium">v1.2.2</p>
-            <ul className="list-disc pl-5">
-              <li>スマホでのタッチ操作性向上</li>
-              <li>レスポンシブデザインの改善</li>
-              <li>ポモドーロタイマーの安定性向上</li>
-            </ul>
-          </div>
-          
-          <div>
-            <p className="font-medium">v1.2.1</p>
-            <ul className="list-disc pl-5">
-              <li>Googleログインでの認証問題修正</li>
-              <li>タスクの自動保存機能改善</li>
-              <li>AIタスク提案の精度向上</li>
-            </ul>
-          </div>
-          
-          <div>
-            <p className="font-medium">v1.2.0</p>
-            <ul className="list-disc pl-5">
-              <li>天気に基づくタスク提案機能の追加</li>
-              <li>AI優先度自動設定機能の改善</li>
-              <li>ダッシュボードの天気情報表示</li>
-              <li>BGMプレイヤーの追加</li>
-            </ul>
-          </div>
-          
           <div>
             <p className="font-medium">v1.1.0</p>
             <ul className="list-disc pl-5">
               <li>ポモドーロタイマー機能の追加</li>
-              <li>アラーム音とバックグラウンド動作対応</li>
-              <li>統計ダッシュボードの追加</li>
-              <li>デッドライン管理機能の強化</li>
+              <li>AIタスク提案機能の初期実装</li>
+              <li>Firebase認証システムの統合</li>
+              <li>レスポンシブデザインの改善</li>
             </ul>
           </div>
-          
+        </div>
+      </div>
+
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
           <div>
             <p className="font-medium">v1.0.0</p>
             <ul className="list-disc pl-5">
-              <li>基本的なタスク管理機能</li>
-              <li>AIタスク提案機能</li>
-              <li>AI優先度設定機能</li>
-              <li>Googleアカウント認証</li>
-              <li>ダークモード対応</li>
+              <li>基本的なタスク管理機能の実装</li>
+              <li>優先度設定機能</li>
+              <li>期限設定機能</li>
+              <li>Google認証ログイン機能</li>
+              <li>リアルタイムデータ同期</li>
             </ul>
           </div>
         </div>
       </div>
       
-      {/* プライバシーとセキュリティのセクション */}
-      <h3 className="text-lg font-semibold mt-4 mb-2">🔒 プライバシーとセキュリティ</h3>
-      
-      <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
-        <p>
-          <strong>・データの保護:</strong> すべてのユーザーデータはFirebaseの高セキュリティ環境で暗号化して保存されます。
-        </p>
-        <p>
-          <strong>・個人情報:</strong> 最小限の個人情報（メールアドレス）のみを収集し、第三者と共有することはありません。
-        </p>
-        <p>
-          <strong>・位置情報:</strong> 天気情報の取得にはIPアドレスベースの大まかな位置情報を使用しますが、正確な位置情報は収集しません。
-        </p>
-        <p>
-          <strong>・オフライン機能:</strong> PWAとしてインストールした場合、一部の機能はオフラインでも利用できます。
-        </p>
-      </div>
-      
-      {/* 技術情報のセクション */}
+      {/* 技術情報 */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🛠️ 技術情報</h3>
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
         <p>
-          <strong>・フロントエンド:</strong> React, TypeScript, Tailwind CSS, Framer Motion
+          <strong>・フロントエンド:</strong> Next.js, React, TypeScript, Tailwind CSS, Framer Motion
         </p>
         <p>
-          <strong>・バックエンド:</strong> Firebase (Authentication, Firestore, Hosting)
+          <strong>・バックエンド:</strong> Firebase (Authentication, Firestore)
         </p>
         <p>
           <strong>・状態管理:</strong> Zustand
         </p>
         <p>
+          <strong>・デプロイ:</strong> Vercel
+        </p>
+        <p>
           <strong>・PWA:</strong> Service Worker, Web App Manifest
         </p>
         <p>
-          <strong>・外部API:</strong> OpenWeatherMap API（天気情報取得）
-        </p>
-        <p>
-          <strong>・対応ブラウザ:</strong> Chrome, Firefox, Safari, Edge（最新版）
-        </p>
-        <p>
-          <strong>・モバイル対応:</strong> iOS Safari, Android Chrome
+          <strong>・ゲーム:</strong> HTML5 Canvas, RequestAnimationFrame
         </p>
       </div>
       
-      {/* サポートと連絡先のセクション */}
-      <h3 className="text-lg font-semibold mt-4 mb-2">📞 サポート</h3>
+      {/* お問い合わせ */}
+      <h3 className="text-lg font-semibold mt-4 mb-2">📞 お問い合わせ</h3>
       
-      <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
-        <p>
-          問題やご質問がある場合は、以下のお問い合わせフォームからご連絡ください：
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700 mb-2">
+          アプリの不具合報告、機能要望、その他のお問い合わせは以下のフォームからお願いします。
         </p>
-        <p>
-          <a 
-            href={contactUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            📝 お問い合わせフォーム
-          </a>
-        </p>
-        <p>
-          フィードバックや新機能のご提案も大歓迎です。より良いアプリケーションにするために、ユーザーの皆様の声をお聞かせください。
-        </p>
+        <a 
+          href={contactUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+        >
+          📝 お問い合わせフォーム
+        </a>
       </div>
       
-      {/* 今後の予定のセクション */}
-      <h3 className="text-lg font-semibold mt-4 mb-2">🚧 今後の開発予定</h3>
-      
-      <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
-        <p>
-          <strong>・チーム機能:</strong> 複数人でのタスク共有とコラボレーション機能
-        </p>
-        <p>
-          <strong>・カレンダー連携:</strong> Google カレンダーとの同期機能
-        </p>
-        <p>
-          <strong>・より高度なAI:</strong> 個人の習慣学習と予測機能の向上
-        </p>
-        <p>
-          <strong>・データエクスポート:</strong> タスクデータのCSV/PDF出力機能
-        </p>
-        <p>
-          <strong>・カスタムテーマ:</strong> ユーザー独自のカラーテーマ設定
-        </p>
-        <p>
-          <strong>・ウィジェット:</strong> ホーム画面での簡易タスク表示
-        </p>
-        <p>
-          <strong>・音声入力:</strong> 音声でのタスク追加機能
-        </p>
-      </div>
-      
-      {/* フッター情報 */}
+      {/* フッター */}
       <div className="mt-6 pt-4 border-t border-gray-200 text-center">
-        <p className="text-sm text-gray-600">
-          進捗堂 v1.5.1 - AI搭載タスク管理・ポモドーロアプリ
+        <p className="text-xs text-gray-500">
+          進捗堂 v1.5.1 - AI搭載タスク管理＆ゲームアプリ
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          🎮 スマートフォン最適化完了 | 📱 PWA対応 | ⚡ 60FPS対応
         </p>
       </div>
     </div>
