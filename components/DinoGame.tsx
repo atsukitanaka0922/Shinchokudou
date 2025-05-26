@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useGameCenterStore } from '@/store/gameCenterStore';
+import { useDevice } from '@/hooks/useDevice';
 
 /**
  * ゲームオブジェクトの型定義
@@ -31,30 +32,31 @@ interface Obstacle extends GameObject {
 export default function DinoGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number>();
-  const lastFrameTimeRef = useRef<number>(0); // 🔥 追加: フレームレート制御用
+  const lastFrameTimeRef = useRef<number>(0);
   
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'gameOver'>('waiting');
   const [score, setScore] = useState(0);
   const [isJumping, setIsJumping] = useState(false);
   
   const { endGame, startGame, getBestScore, canPlayGame } = useGameCenterStore();
+  const isMobile = useDevice(); // 🔥 追加: モバイル判定
   
-  // ゲーム設定
-  const CANVAS_WIDTH = 600;
-  const CANVAS_HEIGHT = 200;
+  // 🔥 修正: レスポンシブなキャンバスサイズ
+  const CANVAS_WIDTH = isMobile ? Math.min(350, window.innerWidth - 32) : 600; // スマホ時は画面幅-余白
+  const CANVAS_HEIGHT = isMobile ? 150 : 200; // スマホ時は高さを縮小
   const GROUND_HEIGHT = 20;
   const GRAVITY = 0.6;
   const JUMP_FORCE = -12;
-  const GAME_SPEED = 4;
-  const TARGET_FPS = 60; // 🔥 追加: 目標フレームレート
-  const FRAME_INTERVAL = 1000 / TARGET_FPS; // 🔥 追加: フレーム間隔（約16.67ms）
+  const GAME_SPEED = isMobile ? 3 : 4; // 🔥 修正: スマホではゲーム速度を少し遅く
+  const TARGET_FPS = 60;
+  const FRAME_INTERVAL = 1000 / TARGET_FPS;
   
   // ゲームオブジェクト
   const dinoRef = useRef<GameObject>({
     x: 50,
     y: CANVAS_HEIGHT - GROUND_HEIGHT - 40,
-    width: 30,
-    height: 40,
+    width: isMobile ? 25 : 30, // 🔥 修正: スマホでは恐竜サイズを小さく
+    height: isMobile ? 35 : 40,
     velocityY: 0
   });
   
@@ -207,12 +209,12 @@ export default function DinoGame() {
     
     // スコア表示
     ctx.fillStyle = '#535353';
-    ctx.font = '16px monospace';
-    ctx.fillText(`スコア: ${scoreRef.current}`, 10, 30);
+    ctx.font = isMobile ? '14px monospace' : '16px monospace'; // 🔥 修正: スマホでは文字サイズを小さく
+    ctx.fillText(`スコア: ${scoreRef.current}`, 10, isMobile ? 25 : 30);
     
     if (gameState === 'waiting') {
       ctx.fillStyle = '#535353';
-      ctx.font = '20px monospace';
+      ctx.font = isMobile ? '16px monospace' : '20px monospace'; // 🔥 修正: スマホ対応
       ctx.textAlign = 'center';
       ctx.fillText('スペースキーでスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       ctx.textAlign = 'left';
@@ -223,17 +225,17 @@ export default function DinoGame() {
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
       ctx.fillStyle = '#ffffff';
-      ctx.font = '24px monospace';
+      ctx.font = isMobile ? '18px monospace' : '24px monospace'; // 🔥 修正: スマホ対応
       ctx.textAlign = 'center';
-      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-      ctx.font = '16px monospace';
-      ctx.fillText(`最終スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 10);
+      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 30 : 40));
+      ctx.font = isMobile ? '12px monospace' : '16px monospace'; // 🔥 修正: スマホ対応
+      ctx.fillText(`最終スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 15 : 10));
       
       if (canPlayGame()) {
-        ctx.fillText('スペースキーでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+        ctx.fillText(isMobile ? 'タップでリトライ (5pt)' : 'スペースキーでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
       } else {
         ctx.fillStyle = '#ff6b6b';
-        ctx.fillText('ポイント不足 - リトライできません', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+        ctx.fillText('ポイント不足', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
       }
       
       ctx.textAlign = 'left';
@@ -285,9 +287,9 @@ export default function DinoGame() {
     // 恐竜リセット
     dinoRef.current = {
       x: 50,
-      y: CANVAS_HEIGHT - GROUND_HEIGHT - 40,
-      width: 30,
-      height: 40,
+      y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 35 : 40),
+      width: isMobile ? 25 : 30, // 🔥 修正: スマホ対応
+      height: isMobile ? 35 : 40,
       velocityY: 0
     };
     
@@ -389,7 +391,7 @@ export default function DinoGame() {
       <div className="mb-4 text-center">
         <h3 className="text-lg font-bold mb-2">🦕 ディノラン</h3>
         <p className="text-sm text-gray-600 mb-2">
-          スペースキーまたはタップでジャンプ！障害物を避けよう！
+          {isMobile ? 'タップでジャンプ！障害物を避けよう！' : 'スペースキーまたはタップでジャンプ！障害物を避けよう！'}
         </p>
         <div className="flex justify-center space-x-4 text-sm">
           <span>現在: {score}点</span>
@@ -403,8 +405,8 @@ export default function DinoGame() {
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
           onClick={jump}
-          onTouchStart={handleTouch} // 🔥 修正: タッチイベントの改善
-          className="block cursor-pointer bg-white"
+          onTouchStart={handleTouch}
+          className="block cursor-pointer bg-white max-w-full" // 🔥 修正: max-w-fullを追加
           style={{ touchAction: 'none' }}
         />
       </div>

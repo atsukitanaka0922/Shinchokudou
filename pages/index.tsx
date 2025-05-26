@@ -229,7 +229,7 @@ export default function Home() {
                       <AppLogo width={100} height={100} className="mr-4" />
                       <div>
                         <h1 className="text-3xl font-bold">進捗堂</h1>
-                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.5.0</p>
+                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.5.1</p>
                       </div>
                     </div>
                     <AuthButton />
@@ -398,7 +398,7 @@ function InstallPWAGuide() {
 
 /**
  * 新機能紹介カードコンポーネント
- * v1.6.0で追加された新機能を紹介
+ * v1.5.0で追加された新機能を紹介
  */
 function NewFeaturesCard() {
   const [showFeatures, setShowFeatures] = useState(true);
@@ -444,7 +444,7 @@ function NewFeaturesCard() {
       
       <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
         <p className="text-xs text-purple-600">
-          <strong>v1.6.0の特徴:</strong> タスク管理で貯めたポイントでゲームを楽しみ、よりモチベーションを維持できるゲーミフィケーション機能を追加しました。
+          <strong>v1.5.0の特徴:</strong> タスク管理で貯めたポイントでゲームを楽しみ、よりモチベーションを維持できるゲーミフィケーション機能を追加しました。
         </p>
       </div>
     </motion.div>

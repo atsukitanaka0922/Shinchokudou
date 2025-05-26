@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useGameCenterStore } from '@/store/gameCenterStore';
+import { useDevice } from '@/hooks/useDevice';
 
 /**
  * ゲームオブジェクトの型定義
@@ -33,28 +34,29 @@ interface Pipe {
 export default function FlappyGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number>();
-  const lastFrameTimeRef = useRef<number>(0); // 🔥 追加: フレームレート制御用
+  const lastFrameTimeRef = useRef<number>(0);
   
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'gameOver'>('waiting');
   const [score, setScore] = useState(0);
   
   const { endGame, startGame, getBestScore, canPlayGame } = useGameCenterStore();
+  const isMobile = useDevice(); // 🔥 追加: モバイル判定
   
-  // ゲーム設定
-  const CANVAS_WIDTH = 400;
-  const CANVAS_HEIGHT = 600;
-  const BIRD_SIZE = 20;
-  const PIPE_WIDTH = 60;
-  const PIPE_GAP = 150;
+  // 🔥 修正: レスポンシブなキャンバスサイズ
+  const CANVAS_WIDTH = isMobile ? Math.min(320, window.innerWidth - 32) : 400; // スマホ時は画面幅-余白
+  const CANVAS_HEIGHT = isMobile ? Math.min(480, window.innerHeight - 200) : 600; // スマホ時は画面高さ-余白
+  const BIRD_SIZE = isMobile ? 16 : 20; // 🔥 修正: スマホでは鳥のサイズを小さく
+  const PIPE_WIDTH = isMobile ? 50 : 60; // 🔥 修正: スマホでパイプ幅を調整
+  const PIPE_GAP = isMobile ? 120 : 150; // 🔥 修正: スマホでパイプの隙間を狭く
   const GRAVITY = 0.5;
   const FLAP_FORCE = -8;
-  const PIPE_SPEED = 3;
-  const TARGET_FPS = 60; // 🔥 追加: 目標フレームレート
-  const FRAME_INTERVAL = 1000 / TARGET_FPS; // 🔥 追加: フレーム間隔（約16.67ms）
+  const PIPE_SPEED = isMobile ? 2.5 : 3; // 🔥 修正: スマホではゲーム速度を少し遅く
+  const TARGET_FPS = 60;
+  const FRAME_INTERVAL = 1000 / TARGET_FPS;
   
   // ゲームオブジェクト
   const birdRef = useRef<Bird>({
-    x: 80,
+    x: isMobile ? 60 : 80, // 🔥 修正: スマホでは鳥の初期位置を調整
     y: CANVAS_HEIGHT / 2,
     velocityY: 0,
     rotation: 0
@@ -223,9 +225,9 @@ export default function FlappyGame() {
     
     // スコア表示
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 24px Arial';
+    ctx.font = isMobile ? 'bold 20px Arial' : 'bold 24px Arial'; // 🔥 修正: スマホでは文字サイズを小さく
     ctx.textAlign = 'center';
-    ctx.fillText(scoreRef.current.toString(), CANVAS_WIDTH / 2, 50);
+    ctx.fillText(scoreRef.current.toString(), CANVAS_WIDTH / 2, isMobile ? 40 : 50);
     
     // ゲーム状態別の表示
     if (gameState === 'waiting') {
@@ -233,11 +235,11 @@ export default function FlappyGame() {
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
       ctx.fillStyle = '#FFF';
-      ctx.font = 'bold 20px Arial';
-      ctx.fillText('フラッピーバード', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-      ctx.font = '16px Arial';
-      ctx.fillText('タップまたはスペースキーでスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-      ctx.fillText('パイプの隙間を通り抜けよう！', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+      ctx.font = isMobile ? 'bold 16px Arial' : 'bold 20px Arial'; // 🔥 修正: スマホ対応
+      ctx.fillText('フラッピーバード', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 30 : 40));
+      ctx.font = isMobile ? '12px Arial' : '16px Arial'; // 🔥 修正: スマホ対応
+      ctx.fillText(isMobile ? 'タップでスタート' : 'タップまたはスペースキーでスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      ctx.fillText('パイプの隙間を通り抜けよう！', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 20 : 30));
     }
     
     if (gameState === 'gameOver') {
@@ -245,17 +247,17 @@ export default function FlappyGame() {
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
       ctx.fillStyle = '#FFF';
-      ctx.font = 'bold 24px Arial';
-      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50);
-      ctx.font = '18px Arial';
-      ctx.fillText(`スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+      ctx.font = isMobile ? 'bold 18px Arial' : 'bold 24px Arial'; // 🔥 修正: スマホ対応
+      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 40 : 50));
+      ctx.font = isMobile ? '14px Arial' : '18px Arial'; // 🔥 修正: スマホ対応
+      ctx.fillText(`スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 20 : 20));
       
-      ctx.font = '16px Arial';
+      ctx.font = isMobile ? '12px Arial' : '16px Arial'; // 🔥 修正: スマホ対応
       if (canPlayGame()) {
-        ctx.fillText('タップでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+        ctx.fillText(isMobile ? 'タップでリトライ (5pt)' : 'タップでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
       } else {
         ctx.fillStyle = '#ff6b6b';
-        ctx.fillText('ポイント不足 - リトライできません', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+        ctx.fillText('ポイント不足', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
       }
     }
     
@@ -286,7 +288,7 @@ export default function FlappyGame() {
   const resetGameState = () => {
     // 鳥リセット
     birdRef.current = {
-      x: 80,
+      x: isMobile ? 60 : 80, // 🔥 修正: スマホ対応
       y: CANVAS_HEIGHT / 2,
       velocityY: 0,
       rotation: 0
@@ -404,7 +406,7 @@ export default function FlappyGame() {
       <div className="mb-4 text-center">
         <h3 className="text-lg font-bold mb-2">🐦 フラッピーバード</h3>
         <p className="text-sm text-gray-600 mb-2">
-          タップまたはスペースキーで羽ばたき！パイプの隙間を通り抜けよう！
+          {isMobile ? 'タップで羽ばたき！パイプの隙間を通り抜けよう！' : 'タップまたはスペースキーで羽ばたき！パイプの隙間を通り抜けよう！'}
         </p>
         <div className="flex justify-center space-x-4 text-sm">
           <span>現在: {score}点</span>
@@ -418,8 +420,8 @@ export default function FlappyGame() {
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
           onClick={flap}
-          onTouchStart={handleTouch} // 🔥 修正: タッチイベントの改善
-          className="block cursor-pointer"
+          onTouchStart={handleTouch}
+          className="block cursor-pointer max-w-full max-h-full" // 🔥 修正: max-w-full, max-h-fullを追加
           style={{ touchAction: 'none' }}
         />
       </div>
