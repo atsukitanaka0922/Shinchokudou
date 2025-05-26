@@ -3,7 +3,7 @@
  * 
  * Chromeの恐竜ゲームを模したHTML5キャンバスゲーム
  * スペースキーまたはタップでジャンプして障害物を避ける
- * v1.6.2: リトライ時のポイント消費問題を完全修正
+ * v1.5.1: スマホでの動作速度問題を修正（フレームレート制御）
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -31,6 +31,7 @@ interface Obstacle extends GameObject {
 export default function DinoGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number>();
+  const lastFrameTimeRef = useRef<number>(0); // 🔥 追加: フレームレート制御用
   
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'gameOver'>('waiting');
   const [score, setScore] = useState(0);
@@ -45,6 +46,8 @@ export default function DinoGame() {
   const GRAVITY = 0.6;
   const JUMP_FORCE = -12;
   const GAME_SPEED = 4;
+  const TARGET_FPS = 60; // 🔥 追加: 目標フレームレート
+  const FRAME_INTERVAL = 1000 / TARGET_FPS; // 🔥 追加: フレーム間隔（約16.67ms）
   
   // ゲームオブジェクト
   const dinoRef = useRef<GameObject>({
@@ -226,7 +229,6 @@ export default function DinoGame() {
       ctx.font = '16px monospace';
       ctx.fillText(`最終スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 10);
       
-      // 🔥 修正: ポイント不足時の表示を追加
       if (canPlayGame()) {
         ctx.fillText('スペースキーでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
       } else {
@@ -239,13 +241,18 @@ export default function DinoGame() {
   }, [gameState, canPlayGame]);
 
   /**
-   * ゲームループ
+   * 🔥 修正: フレームレート制御付きゲームループ
    */
-  const gameLoop = useCallback(() => {
-    if (gameState === 'playing') {
-      updateGame();
+  const gameLoop = useCallback((currentTime: number = 0) => {
+    // フレームレート制御
+    if (currentTime - lastFrameTimeRef.current >= FRAME_INTERVAL) {
+      if (gameState === 'playing') {
+        updateGame();
+      }
+      draw();
+      lastFrameTimeRef.current = currentTime;
     }
-    draw();
+    
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [gameState, updateGame, draw]);
 
@@ -291,11 +298,12 @@ export default function DinoGame() {
     setScore(0);
     setIsJumping(false);
     gameOverProcessedRef.current = false;
+    lastFrameTimeRef.current = 0; // 🔥 追加: フレームタイムリセット
     setGameState('waiting');
   };
 
   /**
-   * 🔥 修正: リトライ処理（新規ゲーム開始として処理）
+   * リトライ処理（新規ゲーム開始として処理）
    */
   const handleRetry = async () => {
     console.log("ディノラン: リトライ処理開始");
@@ -307,13 +315,12 @@ export default function DinoGame() {
     }
     
     try {
-      // 🔥 重要な修正: 新規ゲームとして開始（ポイント消費あり）
       const success = await startGame('dino');
       
       if (success) {
         console.log("ディノラン: リトライ成功、ポイント消費完了");
-        resetGameState(); // ローカル状態をリセット
-        setGameState('playing'); // 即座にプレイ状態に移行
+        resetGameState();
+        setGameState('playing');
       } else {
         console.log("ディノラン: リトライ失敗");
       }
@@ -321,6 +328,14 @@ export default function DinoGame() {
       console.error("ディノラン: リトライエラー", error);
     }
   };
+
+  /**
+   * 🔥 修正: タッチイベントの改善（重複防止）
+   */
+  const handleTouch = useCallback((e: React.TouchEvent) => {
+    e.preventDefault(); // デフォルトのタッチ動作を防止
+    jump();
+  }, [jump]);
 
   /**
    * キーボードイベント
@@ -341,6 +356,7 @@ export default function DinoGame() {
    * ゲームループ開始
    */
   useEffect(() => {
+    lastFrameTimeRef.current = performance.now(); // 🔥 修正: 初期時間設定
     gameLoopRef.current = requestAnimationFrame(gameLoop);
     
     return () => {
@@ -387,6 +403,7 @@ export default function DinoGame() {
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
           onClick={jump}
+          onTouchStart={handleTouch} // 🔥 修正: タッチイベントの改善
           className="block cursor-pointer bg-white"
           style={{ touchAction: 'none' }}
         />
@@ -414,7 +431,6 @@ export default function DinoGame() {
         </button>
       </div>
       
-      {/* 🔥 追加: ポイント不足時の説明 */}
       {gameState === 'gameOver' && !canPlayGame() && (
         <div className="mt-2 text-xs text-red-600 text-center">
           リトライにはポイントが不足しています。<br/>
