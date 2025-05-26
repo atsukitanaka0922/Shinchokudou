@@ -41,24 +41,40 @@ export default function DinoGame() {
   const { endGame, startGame, getBestScore, canPlayGame } = useGameCenterStore();
   const isMobile = useDevice(); // 🔥 追加: モバイル判定
   
-  // 🔥 修正: レスポンシブなキャンバスサイズ（最小サイズを保証）
-  const CANVAS_WIDTH = isMobile ? Math.max(300, Math.min(350, window.innerWidth - 32)) : 600;
-  const CANVAS_HEIGHT = isMobile ? Math.max(120, 150) : 200; // 最小高さを保証
+  // 🔥 修正: より安全なキャンバスサイズ設定
+  const getCanvasSize = () => {
+    if (!isMobile) return { width: 600, height: 200 };
+    
+    // スマホの場合、より確実なサイズ計算
+    const screenWidth = window.innerWidth;
+    const maxWidth = Math.min(screenWidth - 40, 350); // 画面幅-余白、最大350px
+    const width = Math.max(280, maxWidth); // 最小280px保証
+    const height = 140; // 固定高さ
+    
+    return { width, height };
+  };
+  
+  const canvasSize = getCanvasSize();
+  const CANVAS_WIDTH = canvasSize.width;
+  const CANVAS_HEIGHT = canvasSize.height;
   const GROUND_HEIGHT = 20;
   const GRAVITY = 0.6;
   const JUMP_FORCE = -12;
-  const GAME_SPEED = isMobile ? 3 : 4; // 🔥 修正: スマホではゲーム速度を少し遅く
+  const GAME_SPEED = isMobile ? 2.5 : 4; // 🔥 修正: スマホではより遅く
   const TARGET_FPS = 60;
   const FRAME_INTERVAL = 1000 / TARGET_FPS;
   
-  // ゲームオブジェクト
-  const dinoRef = useRef<GameObject>({
-    x: isMobile ? 30 : 50, // 🔥 修正: スマホでは左端から少し離す
-    y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 30 : 40),
-    width: isMobile ? 20 : 30, // 🔥 修正: スマホでは恐竜サイズをより小さく
-    height: isMobile ? 30 : 40,
+  // 🔥 修正: より確実なゲームオブジェクト初期化
+  const createDinoObject = () => ({
+    x: isMobile ? Math.max(20, CANVAS_WIDTH * 0.1) : 50, // 画面幅の10%位置、最小20px
+    y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 25 : 40),
+    width: isMobile ? 18 : 30,
+    height: isMobile ? 25 : 40,
     velocityY: 0
   });
+  
+  // ゲームオブジェクト
+  const dinoRef = useRef<GameObject>(createDinoObject());
   
   const obstaclesRef = useRef<Obstacle[]>([]);
   const scoreRef = useRef(0);
@@ -79,18 +95,27 @@ export default function DinoGame() {
   const drawDino = (ctx: CanvasRenderingContext2D) => {
     const dino = dinoRef.current;
     
+    // 🔥 追加: デバッグ用ログ（開発時のみ）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Dino position:', { x: dino.x, y: dino.y, canvasWidth: CANVAS_WIDTH, canvasHeight: CANVAS_HEIGHT });
+    }
+    
     // 恐竜の体
     drawRect(ctx, dino, '#535353');
     
     // 目
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(dino.x + 20, dino.y + 5, 3, 3);
+    ctx.fillRect(dino.x + (isMobile ? 12 : 20), dino.y + (isMobile ? 3 : 5), isMobile ? 2 : 3, isMobile ? 2 : 3);
     
     // 足（ジャンプ中は位置調整）
     if (!isJumping) {
       ctx.fillStyle = '#535353';
-      ctx.fillRect(dino.x + 5, dino.y + 35, 4, 8);
-      ctx.fillRect(dino.x + 15, dino.y + 35, 4, 8);
+      const footWidth = isMobile ? 2 : 4;
+      const footHeight = isMobile ? 4 : 8;
+      const footY = dino.y + dino.height - (isMobile ? 4 : 8);
+      
+      ctx.fillRect(dino.x + (isMobile ? 3 : 5), footY, footWidth, footHeight);
+      ctx.fillRect(dino.x + (isMobile ? 8 : 15), footY, footWidth, footHeight);
     }
   };
 
@@ -165,13 +190,16 @@ export default function DinoGame() {
     
     // 新しい障害物を生成
     if (obstaclesRef.current.length === 0 || 
-        obstaclesRef.current[obstaclesRef.current.length - 1].x < CANVAS_WIDTH - (isMobile ? 120 : 200)) {
-      if (Math.random() < 0.02) { // 2%の確率で生成
+        obstaclesRef.current[obstaclesRef.current.length - 1].x < CANVAS_WIDTH - (isMobile ? 100 : 200)) {
+      if (Math.random() < (isMobile ? 0.015 : 0.02)) { // スマホでは生成頻度を少し下げる
+        const obstacleWidth = isMobile ? 8 : 15;
+        const obstacleHeight = isMobile ? 18 : 30;
+        
         obstaclesRef.current.push({
           x: CANVAS_WIDTH,
-          y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 20 : 30), // 🔥 修正: スマホでは障害物サイズを調整
-          width: isMobile ? 10 : 15, // 🔥 修正: スマホでは障害物幅を小さく
-          height: isMobile ? 20 : 30, // 🔥 修正: スマホでは障害物高さを小さく
+          y: CANVAS_HEIGHT - GROUND_HEIGHT - obstacleHeight,
+          width: obstacleWidth,
+          height: obstacleHeight,
           passed: false
         });
       }
@@ -214,9 +242,9 @@ export default function DinoGame() {
     
     if (gameState === 'waiting') {
       ctx.fillStyle = '#535353';
-      ctx.font = isMobile ? '16px monospace' : '20px monospace'; // 🔥 修正: スマホ対応
+      ctx.font = isMobile ? '14px monospace' : '20px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('スペースキーでスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      ctx.fillText(isMobile ? 'タップでスタート' : 'スペースキーでスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       ctx.textAlign = 'left';
     }
     
@@ -225,17 +253,19 @@ export default function DinoGame() {
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
       ctx.fillStyle = '#ffffff';
-      ctx.font = isMobile ? '18px monospace' : '24px monospace'; // 🔥 修正: スマホ対応
+      ctx.font = isMobile ? '16px monospace' : '24px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 30 : 40));
-      ctx.font = isMobile ? '12px monospace' : '16px monospace'; // 🔥 修正: スマホ対応
-      ctx.fillText(`最終スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 15 : 10));
+      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 25 : 40));
+      ctx.font = isMobile ? '10px monospace' : '16px monospace';
+      ctx.fillText(`最終スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 10 : 10));
       
       if (canPlayGame()) {
-        ctx.fillText(isMobile ? 'タップでリトライ (5pt)' : 'スペースキーでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
+        ctx.font = isMobile ? '8px monospace' : '14px monospace'; // 🔥 修正: さらに小さく
+        ctx.fillText(isMobile ? 'タップでリトライ (5pt)' : 'スペースキーでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 10 : 20));
       } else {
         ctx.fillStyle = '#ff6b6b';
-        ctx.fillText('ポイント不足', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
+        ctx.font = isMobile ? '8px monospace' : '14px monospace';
+        ctx.fillText('ポイント不足', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 10 : 20));
       }
       
       ctx.textAlign = 'left';
@@ -284,14 +314,8 @@ export default function DinoGame() {
    * ゲームリセット（初期化）
    */
   const resetGameState = () => {
-    // 恐竜リセット
-    dinoRef.current = {
-      x: isMobile ? 30 : 50, // 🔥 修正: スマホ対応
-      y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 30 : 40),
-      width: isMobile ? 20 : 30, // 🔥 修正: スマホ対応
-      height: isMobile ? 30 : 40,
-      velocityY: 0
-    };
+    // 恐竜リセット（関数を使って確実に初期化）
+    dinoRef.current = createDinoObject();
     
     // ゲーム状態リセット
     obstaclesRef.current = [];
@@ -358,7 +382,10 @@ export default function DinoGame() {
    * ゲームループ開始
    */
   useEffect(() => {
-    lastFrameTimeRef.current = performance.now(); // 🔥 修正: 初期時間設定
+    // 🔥 追加: 恐竜の初期位置を確実に設定
+    dinoRef.current = createDinoObject();
+    
+    lastFrameTimeRef.current = performance.now();
     gameLoopRef.current = requestAnimationFrame(gameLoop);
     
     return () => {
@@ -366,7 +393,7 @@ export default function DinoGame() {
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop]);
+  }, [gameLoop, CANVAS_WIDTH, CANVAS_HEIGHT]); // 🔥 修正: キャンバスサイズ変更時も再初期化
 
   /**
    * ゲーム終了時の処理
@@ -399,15 +426,19 @@ export default function DinoGame() {
         </div>
       </div>
       
-      <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+      <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
         <canvas
           ref={canvasRef}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
           onClick={jump}
           onTouchStart={handleTouch}
-          className="block cursor-pointer bg-white max-w-full" // 🔥 修正: max-w-fullを追加
-          style={{ touchAction: 'none' }}
+          className="block cursor-pointer bg-white w-full h-auto" // 🔥 修正: w-full h-autoで確実にフィット
+          style={{ 
+            touchAction: 'none',
+            maxWidth: '100%',
+            height: 'auto'
+          }}
         />
       </div>
       
@@ -437,6 +468,13 @@ export default function DinoGame() {
         <div className="mt-2 text-xs text-red-600 text-center">
           リトライにはポイントが不足しています。<br/>
           タスクを完了してポイントを獲得してください。
+        </div>
+      )}
+      
+      {/* 🔥 追加: デバッグ情報（開発時のみ） */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-2 text-xs text-gray-500 text-center">
+          Canvas: {CANVAS_WIDTH}x{CANVAS_HEIGHT} | Mobile: {isMobile ? 'Yes' : 'No'}
         </div>
       )}
     </motion.div>
