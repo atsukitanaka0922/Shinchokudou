@@ -3,7 +3,7 @@
  * 
  * Chromeの恐竜ゲームを模したHTML5キャンバスゲーム
  * スペースキーまたはタップでジャンプして障害物を避ける
- * v1.5.1: スマホでの動作速度問題を修正（フレームレート制御）
+ * v1.5.1: スマホでの動作速度問題を修正（フレームレート制御）+ 表示位置問題修正
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -39,7 +39,7 @@ export default function DinoGame() {
   const [isJumping, setIsJumping] = useState(false);
   
   const { endGame, startGame, getBestScore, canPlayGame } = useGameCenterStore();
-  const isMobile = useDevice(); // 🔥 追加: モバイル判定
+  const isMobile = useDevice();
   
   // 🔥 修正: レスポンシブなキャンバスサイズ（最小サイズを保証）
   const CANVAS_WIDTH = isMobile ? Math.max(320, Math.min(380, window.innerWidth - 32)) : 600;
@@ -256,12 +256,12 @@ export default function DinoGame() {
     
     // スコア表示
     ctx.fillStyle = '#535353';
-    ctx.font = isMobile ? '14px monospace' : '16px monospace'; // 🔥 修正: スマホでは文字サイズを小さく
+    ctx.font = isMobile ? '14px monospace' : '16px monospace';
     ctx.fillText(`スコア: ${scoreRef.current}`, 10, isMobile ? 25 : 30);
     
     if (gameState === 'waiting') {
       ctx.fillStyle = '#535353';
-      ctx.font = isMobile ? '16px monospace' : '20px monospace'; // 🔥 修正: スマホ対応
+      ctx.font = isMobile ? '16px monospace' : '20px monospace';
       ctx.textAlign = 'center';
       ctx.fillText('スペースキーでスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       ctx.textAlign = 'left';
@@ -272,10 +272,10 @@ export default function DinoGame() {
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
       ctx.fillStyle = '#ffffff';
-      ctx.font = isMobile ? '18px monospace' : '24px monospace'; // 🔥 修正: スマホ対応
+      ctx.font = isMobile ? '18px monospace' : '24px monospace';
       ctx.textAlign = 'center';
       ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 30 : 40));
-      ctx.font = isMobile ? '12px monospace' : '16px monospace'; // 🔥 修正: スマホ対応
+      ctx.font = isMobile ? '12px monospace' : '16px monospace';
       ctx.fillText(`最終スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 15 : 10));
       
       if (canPlayGame()) {
@@ -326,33 +326,6 @@ export default function DinoGame() {
       handleRetry();
     }
   }, [gameState, isJumping]);
-
-  /**
-   * リトライ処理（新規ゲーム開始として処理）
-   */
-  const handleRetry = async () => {
-    console.log("ディノラン: リトライ処理開始");
-    
-    // ポイントチェック
-    if (!canPlayGame()) {
-      console.log("ディノラン: ポイント不足でリトライ不可");
-      return;
-    }
-    
-    try {
-      const success = await startGame('dino');
-      
-      if (success) {
-        console.log("ディノラン: リトライ成功、ポイント消費完了");
-        resetGameState();
-        setGameState('playing');
-      } else {
-        console.log("ディノラン: リトライ失敗");
-      }
-    } catch (error) {
-      console.error("ディノラン: リトライエラー", error);
-    }
-  };
 
   /**
    * ゲームリセット（初期化）
@@ -434,7 +407,7 @@ export default function DinoGame() {
    * ゲームループ開始
    */
   useEffect(() => {
-    lastFrameTimeRef.current = performance.now(); // 🔥 修正: 初期時間設定
+    lastFrameTimeRef.current = performance.now();
     gameLoopRef.current = requestAnimationFrame(gameLoop);
     
     return () => {
@@ -482,7 +455,7 @@ export default function DinoGame() {
           height={CANVAS_HEIGHT}
           onClick={jump}
           onTouchStart={handleTouch}
-          className="block cursor-pointer bg-white max-w-full" // 🔥 修正: max-w-fullを追加
+          className="block cursor-pointer bg-white max-w-full"
           style={{ touchAction: 'none' }}
         />
       </div>
