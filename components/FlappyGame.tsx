@@ -38,13 +38,27 @@ export default function FlappyGame() {
   
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'gameOver'>('waiting');
   const [score, setScore] = useState(0);
+  const [canRetry, setCanRetry] = useState(true); // 🔥 追加: リトライ可能フラグ
+  const [canvasSize, setCanvasSize] = useState({ width: 400, height: 600 }); // 🔥 追加: キャンバスサイズ状態
   
   const { endGame, startGame, getBestScore, canPlayGame } = useGameCenterStore();
-  const isMobile = useDevice(); // 🔥 追加: モバイル判定
+  const isMobile = useDevice();
   
-  // 🔥 修正: レスポンシブなキャンバスサイズ
-  const CANVAS_WIDTH = isMobile ? Math.min(320, window.innerWidth - 32) : 400; // スマホ時は画面幅-余白
-  const CANVAS_HEIGHT = isMobile ? Math.min(480, window.innerHeight - 200) : 600; // スマホ時は画面高さ-余白
+  // 🔥 修正: キャンバスサイズを状態として管理
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const width = isMobile ? Math.min(320, window.innerWidth - 32) : 400;
+      const height = isMobile ? Math.min(480, window.innerHeight - 200) : 600;
+      setCanvasSize({ width, height });
+    };
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, [isMobile]);
+  
+  const CANVAS_WIDTH = canvasSize.width;
+  const CANVAS_HEIGHT = canvasSize.height;
   const BIRD_SIZE = isMobile ? 16 : 20; // 🔥 修正: スマホでは鳥のサイズを小さく
   const PIPE_WIDTH = isMobile ? 50 : 60; // 🔥 修正: スマホでパイプ幅を調整
   const PIPE_GAP = isMobile ? 120 : 150; // 🔥 修正: スマホでパイプの隙間を狭く
@@ -54,13 +68,20 @@ export default function FlappyGame() {
   const TARGET_FPS = 60;
   const FRAME_INTERVAL = 1000 / TARGET_FPS;
   
-  // ゲームオブジェクト
-  const birdRef = useRef<Bird>({
-    x: isMobile ? 60 : 80, // 🔥 修正: スマホでは鳥の初期位置を調整
-    y: CANVAS_HEIGHT / 2,
-    velocityY: 0,
-    rotation: 0
-  });
+  // ゲームオブジェクト（動的に初期化）
+  const birdRef = useRef<Bird | null>(null);
+  
+  // 🔥 追加: 鳥オブジェクトの初期化
+  useEffect(() => {
+    if (!birdRef.current) {
+      birdRef.current = {
+        x: isMobile ? 60 : 80,
+        y: CANVAS_HEIGHT / 2,
+        velocityY: 0,
+        rotation: 0
+      };
+    }
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT, isMobile]);
   
   const pipesRef = useRef<Pipe[]>([]);
   const scoreRef = useRef(0);
@@ -166,6 +187,7 @@ export default function FlappyGame() {
    */
   const updateGame = useCallback(() => {
     const bird = birdRef.current;
+    if (!bird) return; // 🔥 追加: null チェック
     
     // 鳥の物理演算
     bird.velocityY += GRAVITY;
@@ -203,8 +225,14 @@ export default function FlappyGame() {
     // 当たり判定
     if (checkCollision()) {
       setGameState('gameOver');
+      setCanRetry(false); // 🔥 追加: ゲームオーバー時にリトライを一時的に無効化
+      
+      // 🔥 追加: 3秒後にリトライを有効化
+      setTimeout(() => {
+        setCanRetry(true);
+      }, 3000);
     }
-  }, []);
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT]); // 🔥 修正: 依存関係を追加
 
   /**
    * ゲーム描画
@@ -252,12 +280,15 @@ export default function FlappyGame() {
       ctx.font = isMobile ? '14px Arial' : '18px Arial'; // 🔥 修正: スマホ対応
       ctx.fillText(`スコア: ${scoreRef.current}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - (isMobile ? 20 : 20));
       
-      ctx.font = isMobile ? '12px Arial' : '16px Arial'; // 🔥 修正: スマホ対応
-      if (canPlayGame()) {
+      ctx.font = isMobile ? '12px Arial' : '16px Arial';
+      if (canPlayGame() && canRetry) { // 🔥 修正: canRetryも条件に追加
         ctx.fillText(isMobile ? 'タップでリトライ (5pt)' : 'タップでリトライ (5ポイント)', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
-      } else {
+      } else if (!canPlayGame()) {
         ctx.fillStyle = '#ff6b6b';
         ctx.fillText('ポイント不足', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
+      } else if (!canRetry) { // 🔥 追加: リトライ待機中の表示
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText('リトライまで待機中...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + (isMobile ? 15 : 20));
       }
     }
     
@@ -274,13 +305,13 @@ export default function FlappyGame() {
     }
     
     if (gameState === 'playing') {
-      birdRef.current.velocityY = FLAP_FORCE;
+      birdRef.current && (birdRef.current.velocityY = FLAP_FORCE); // 🔥 修正: null チェック
     }
     
-    if (gameState === 'gameOver') {
+    if (gameState === 'gameOver' && canRetry) { // 🔥 修正: canRetry条件を追加
       handleRetry();
     }
-  }, [gameState]);
+  }, [gameState, canRetry]); // 🔥 修正: 依存関係にcanRetryを追加
 
   /**
    * ゲームリセット（初期化）
@@ -288,11 +319,21 @@ export default function FlappyGame() {
   const resetGameState = () => {
     // 鳥リセット
     birdRef.current = {
-      x: isMobile ? 60 : 80, // 🔥 修正: スマホ対応
+      x: isMobile ? 60 : 80,
       y: CANVAS_HEIGHT / 2,
       velocityY: 0,
       rotation: 0
     };
+    
+    // ゲーム状態リセット
+    pipesRef.current = [];
+    scoreRef.current = 0;
+    setScore(0);
+    gameOverProcessedRef.current = false;
+    lastFrameTimeRef.current = 0;
+    setCanRetry(true); // 🔥 追加: リトライフラグをリセット
+    setGameState('waiting');
+  };
     
     // ゲーム状態リセット
     pipesRef.current = [];
@@ -430,14 +471,15 @@ export default function FlappyGame() {
         <button
           onClick={flap}
           className={`px-4 py-2 rounded-lg mr-2 ${
-            gameState === 'gameOver' && !canPlayGame()
+            gameState === 'gameOver' && (!canPlayGame() || !canRetry) // 🔥 修正: canRetryも条件に追加
               ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
               : 'bg-green-500 text-white hover:bg-green-600'
           }`}
-          disabled={gameState === 'gameOver' && !canPlayGame()}
+          disabled={gameState === 'gameOver' && (!canPlayGame() || !canRetry)} // 🔥 修正: canRetryも条件に追加
         >
           {gameState === 'waiting' ? 'スタート' : 
            gameState === 'playing' ? '羽ばたき' : 
+           !canRetry ? '待機中...' : // 🔥 追加: 待機中の表示
            canPlayGame() ? 'リトライ (5pt)' : 'ポイント不足'}
         </button>
         <button
@@ -452,6 +494,14 @@ export default function FlappyGame() {
         <div className="mt-2 text-xs text-red-600 text-center">
           リトライにはポイントが不足しています。<br/>
           タスクを完了してポイントを獲得してください。
+        </div>
+      )}
+      
+      {/* 🔥 追加: 待機中の説明 */}
+      {gameState === 'gameOver' && canPlayGame() && !canRetry && (
+        <div className="mt-2 text-xs text-orange-600 text-center">
+          連打防止のため、少しお待ちください...<br/>
+          まもなくリトライできます。
         </div>
       )}
     </motion.div>

@@ -37,13 +37,26 @@ export default function DinoGame() {
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'gameOver'>('waiting');
   const [score, setScore] = useState(0);
   const [isJumping, setIsJumping] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 600, height: 200 }); // 🔥 追加: キャンバスサイズ状態
   
   const { endGame, startGame, getBestScore, canPlayGame } = useGameCenterStore();
-  const isMobile = useDevice(); // 🔥 追加: モバイル判定
+  const isMobile = useDevice();
   
-  // 🔥 修正: レスポンシブなキャンバスサイズ
-  const CANVAS_WIDTH = isMobile ? Math.min(350, window.innerWidth - 32) : 600; // スマホ時は画面幅-余白
-  const CANVAS_HEIGHT = isMobile ? 150 : 200; // スマホ時は高さを縮小
+  // 🔥 修正: キャンバスサイズを状態として管理
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const width = isMobile ? Math.min(350, window.innerWidth - 32) : 600;
+      const height = isMobile ? 150 : 200;
+      setCanvasSize({ width, height });
+    };
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, [isMobile]);
+  
+  const CANVAS_WIDTH = canvasSize.width;
+  const CANVAS_HEIGHT = canvasSize.height;
   const GROUND_HEIGHT = 20;
   const GRAVITY = 0.6;
   const JUMP_FORCE = -12;
@@ -51,14 +64,21 @@ export default function DinoGame() {
   const TARGET_FPS = 60;
   const FRAME_INTERVAL = 1000 / TARGET_FPS;
   
-  // ゲームオブジェクト
-  const dinoRef = useRef<GameObject>({
-    x: 50,
-    y: CANVAS_HEIGHT - GROUND_HEIGHT - 40,
-    width: isMobile ? 25 : 30, // 🔥 修正: スマホでは恐竜サイズを小さく
-    height: isMobile ? 35 : 40,
-    velocityY: 0
-  });
+  // ゲームオブジェクト（動的に初期化）
+  const dinoRef = useRef<GameObject | null>(null);
+  
+  // 🔥 追加: 恐竜オブジェクトの初期化
+  useEffect(() => {
+    if (!dinoRef.current || dinoRef.current.width !== (isMobile ? 25 : 30)) {
+      dinoRef.current = {
+        x: 50,
+        y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 35 : 40),
+        width: isMobile ? 25 : 30,
+        height: isMobile ? 35 : 40,
+        velocityY: 0
+      };
+    }
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT, isMobile]);
   
   const obstaclesRef = useRef<Obstacle[]>([]);
   const scoreRef = useRef(0);
@@ -134,6 +154,7 @@ export default function DinoGame() {
    */
   const updateGame = useCallback(() => {
     const dino = dinoRef.current;
+    if (!dino) return; // 🔥 追加: null チェック
     
     // 恐竜の物理演算
     if (dino.velocityY !== undefined) {
@@ -187,7 +208,7 @@ export default function DinoGame() {
     
     // ゲームスピード上昇
     gameSpeedRef.current += 0.001;
-  }, []);
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT]); // 🔥 修正: 依存関係を追加
 
   /**
    * ゲーム描画
@@ -283,15 +304,29 @@ export default function DinoGame() {
   /**
    * ゲームリセット（初期化）
    */
+  /**
+   * ゲームリセット（初期化）
+   */
   const resetGameState = () => {
     // 恐竜リセット
     dinoRef.current = {
       x: 50,
       y: CANVAS_HEIGHT - GROUND_HEIGHT - (isMobile ? 35 : 40),
-      width: isMobile ? 25 : 30, // 🔥 修正: スマホ対応
+      width: isMobile ? 25 : 30,
       height: isMobile ? 35 : 40,
       velocityY: 0
     };
+    
+    // ゲーム状態リセット
+    obstaclesRef.current = [];
+    scoreRef.current = 0;
+    gameSpeedRef.current = GAME_SPEED;
+    setScore(0);
+    setIsJumping(false);
+    gameOverProcessedRef.current = false;
+    lastFrameTimeRef.current = 0;
+    setGameState('waiting');
+  };
     
     // ゲーム状態リセット
     obstaclesRef.current = [];
