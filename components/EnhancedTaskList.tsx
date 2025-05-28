@@ -1,16 +1,39 @@
 /**
- * 拡張タスクリストコンポーネント
+ * 拡張タスクリストコンポーネント（ソート機能付き）
  * 
  * サブタスクとメモ機能を含む拡張されたタスクリスト
- * 各タスクの詳細表示、編集、サブタスク管理などの機能を提供
+ * v1.6.0: タスクソート機能とゲーム中ポモドーロタイマー継続機能を追加
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { useAuthStore } from '@/store/auth';
 import { PriorityLevel } from '@/lib/aiPriorityAssignment';
-import { SubTaskUtils, TaskUtils } from '@/lib/taskInterfaces';
+import { SubTaskUtils, TaskUtils, TaskSortBy, EnhancedTask } from '@/lib/taskInterfaces';
+import FloatingPomodoroTimer from './FloatingPomodoroTimer';
+
+/**
+
+/**
+ * ソートオプションの型定義
+ */
+interface SortOption {
+  value: TaskSortBy;
+  label: string;
+  icon: string;
+}
+
+/**
+ * 利用可能なソートオプション
+ */
+const SORT_OPTIONS: SortOption[] = [
+  { value: 'priority', label: '優先度順', icon: '⚡' },
+  { value: 'deadline', label: '期限順', icon: '📅' },
+  { value: 'created', label: '作成日順', icon: '🕐' },
+  { value: 'progress', label: '進捗順', icon: '📊' },
+  { value: 'alphabetical', label: 'あいうえお順', icon: '🔤' }
+];
 
 /**
  * 拡張タスクリストコンポーネント
@@ -37,6 +60,8 @@ export default function EnhancedTaskList() {
   
   // ローカル状態
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [sortBy, setSortBy] = useState<TaskSortBy>('priority'); // 🔥 追加: ソート状態
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // 🔥 追加: ソート順序
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<{taskId: string, field: string} | null>(null);
   const [editValues, setEditValues] = useState<{[key: string]: any}>({});
@@ -57,7 +82,79 @@ export default function EnhancedTaskList() {
       setMounted(false);
     };
   }, [user, loadTasks]);
-  
+
+  /**
+   * 🔥 追加: タスクをソートする関数
+   */
+  const sortTasks = (tasksToSort: EnhancedTask[]): EnhancedTask[] => {
+    const sorted = [...tasksToSort].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'priority':
+          // 優先度: high(3) > medium(2) > low(1)
+          const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+          comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+          break;
+          
+        case 'deadline':
+          // 期限: 近い順（期限なしは最後）
+          if (!a.deadline && !b.deadline) comparison = 0;
+          else if (!a.deadline) comparison = 1;
+          else if (!b.deadline) comparison = -1;
+          else comparison = new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+          break;
+          
+        case 'created':
+          // 作成日: 新しい順
+          comparison = (b.createdAt || 0) - (a.createdAt || 0);
+          break;
+          
+        case 'progress':
+          // 進捗: 高い順
+          const progressA = TaskUtils.calculateTotalProgress(a);
+          const progressB = TaskUtils.calculateTotalProgress(b);
+          comparison = progressB - progressA;
+          break;
+          
+        case 'alphabetical':
+          // あいうえお順
+          comparison = a.text.localeCompare(b.text, 'ja');
+          break;
+          
+        default:
+          comparison = 0;
+      }
+      
+      // ソート順序を適用
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+  };
+
+  /**
+   * 🔥 追加: フィルターとソートを適用したタスクリスト
+   */
+  const filteredAndSortedTasks = useMemo(() => {
+    // フィルター適用
+    let filtered = tasks.filter(task => {
+      if (filter === 'active') return !task.completed;
+      if (filter === 'completed') return task.completed;
+      return true;
+    });
+    
+    // ソート適用
+    return sortTasks(filtered);
+  }, [tasks, filter, sortBy, sortOrder]);
+
+  /**
+   * 🔥 追加: ソート順序を切り替える
+   */
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
   /**
    * タスクの展開/収納を切り替え
    */
@@ -157,13 +254,6 @@ export default function EnhancedTaskList() {
     }
   };
   
-  // フィルター条件に基づいてタスクをフィルタリング
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'active') return !task.completed;
-    if (filter === 'completed') return task.completed;
-    return true;
-  });
-  
   // クライアントサイドレンダリングの確認
   if (!mounted) {
     return (
@@ -237,6 +327,9 @@ export default function EnhancedTaskList() {
 
   return (
     <div className="bg-white rounded-lg shadow-md">
+      {/* フローティングポモドーロタイマー */}
+      <FloatingPomodoroTimer />
+      
       {/* フィルタータブ */}
       <div className="flex border-b">
         {(['all', 'active', 'completed'] as const).map((option) => (
@@ -254,10 +347,47 @@ export default function EnhancedTaskList() {
         ))}
       </div>
       
+      {/* 🔥 追加: ソートコントロール */}
+      <div className="px-3 py-3 border-b bg-gray-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-sm font-medium text-gray-700">並べ替え:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as TaskSortBy)}
+              className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
+            >
+              {SORT_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.icon} {option.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={toggleSortOrder}
+              className="text-sm px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 flex items-center"
+              title={`${sortOrder === 'asc' ? '昇順' : '降順'}で表示中`}
+            >
+              {sortOrder === 'asc' ? '↗️' : '↘️'}
+              <span className="ml-1">{sortOrder === 'asc' ? '昇順' : '降順'}</span>
+            </button>
+          </div>
+          
+          <div className="text-xs text-gray-500">
+            {filteredAndSortedTasks.length}件 / {tasks.length}件
+          </div>
+        </div>
+      </div>
+      
       {/* タスク件数と再読み込みボタン */}
       <div className="flex justify-between items-center px-3 py-2 border-b">
         <p className="text-xs text-gray-500">
-          タスク: {tasks.length}件 (表示: {filteredTasks.length}件)
+          {sortBy === 'priority' && '優先度順 '}
+          {sortBy === 'deadline' && '期限順 '}
+          {sortBy === 'created' && '作成日順 '}
+          {sortBy === 'progress' && '進捗順 '}
+          {sortBy === 'alphabetical' && 'あいうえお順 '}
+          で表示中
         </p>
         <button 
           onClick={() => loadTasks()} 
@@ -269,12 +399,12 @@ export default function EnhancedTaskList() {
       
       {/* タスクリスト */}
       <ul className="divide-y divide-gray-200">
-        {filteredTasks.length === 0 ? (
+        {filteredAndSortedTasks.length === 0 ? (
           <li className="p-4 text-center text-gray-500">
             現在の表示条件では該当するタスクがありません
           </li>
         ) : (
-          filteredTasks.map((task) => {
+          filteredAndSortedTasks.map((task) => {
             const subTaskProgress = SubTaskUtils.calculateProgress(task.subTasks);
             const totalProgress = TaskUtils.calculateTotalProgress(task);
             const complexity = TaskUtils.calculateComplexity(task);
@@ -683,7 +813,7 @@ export default function EnhancedTaskList() {
       
       {/* タスク数の表示 */}
       <div className="p-3 text-xs text-gray-500 border-t">
-        合計: {filteredTasks.length} / {tasks.length} タスク
+        合計: {filteredAndSortedTasks.length} / {tasks.length} タスク
         {tasks.length > 0 && (
           <>
             {' • '}

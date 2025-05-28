@@ -1,9 +1,9 @@
 /**
- * ゲームセンターメインコンポーネント
+ * ゲームセンターメインコンポーネント（ポモドーロ継続対応）
  * 
  * ポイント消費型ゲームのメイン画面
  * ゲーム選択、統計表示、プレイ履歴管理を提供
- * v1.6.1: データ反映とリアルタイム更新を修正
+ * v1.6.0: ゲーム中でもポモドーロタイマーが継続動作
  */
 
 import { useState, useEffect } from 'react';
@@ -13,6 +13,7 @@ import { usePointStore } from '@/store/pointStore';
 import { useAuthStore } from '@/store/auth';
 import DinoGame from './DinoGame';
 import FlappyGame from './FlappyGame';
+import FloatingPomodoroTimer from './FloatingPomodoroTimer'; // 🔥 追加
 
 /**
  * ゲームセンターメインコンポーネント
@@ -35,9 +36,9 @@ export default function GameCenter() {
   
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [currentTab, setCurrentTab] = useState<'games' | 'stats' | 'history'>('games');
-  const [refreshKey, setRefreshKey] = useState(0); // 🔥 追加: 強制再レンダリング用
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // 🔥 修正: データ読み込みを強化
+  // データ読み込みを強化
   useEffect(() => {
     if (user) {
       console.log("ゲームセンター: データ読み込み開始");
@@ -51,16 +52,15 @@ export default function GameCenter() {
       };
       loadData();
     }
-  }, [user, loadGameHistory, refreshKey]); // refreshKeyを依存関係に追加
+  }, [user, loadGameHistory, refreshKey]);
 
-  // 🔥 追加: ゲーム終了時のデータ更新監視
+  // ゲーム終了時のデータ更新監視
   useEffect(() => {
-    // ゲーム履歴の変更を監視してリアルタイム更新
     const interval = setInterval(() => {
-      if (user && !selectedGame) { // ゲームプレイ中でない場合のみ
+      if (user && !selectedGame) {
         loadGameHistory();
       }
-    }, 5000); // 5秒ごとに更新チェック
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [user, selectedGame, loadGameHistory]);
@@ -86,10 +86,9 @@ export default function GameCenter() {
     console.log("ゲーム終了処理開始");
     setSelectedGame(null);
     
-    // 🔥 修正: データを強制的に再読み込み
     try {
-      await loadGameHistory(); // 履歴と統計を更新
-      setRefreshKey(prev => prev + 1); // 強制再レンダリング
+      await loadGameHistory();
+      setRefreshKey(prev => prev + 1);
       console.log("ゲーム終了: データ更新完了");
     } catch (error) {
       console.error("ゲーム終了: データ更新エラー", error);
@@ -97,7 +96,7 @@ export default function GameCenter() {
   };
 
   /**
-   * 🔥 追加: 手動データ更新
+   * 手動データ更新
    */
   const handleRefreshData = async () => {
     console.log("手動データ更新開始");
@@ -144,11 +143,18 @@ export default function GameCenter() {
   // ゲームプレイ中の表示
   if (selectedGame) {
     return (
-      <div className="bg-white rounded-lg shadow-md">
+      <div className="bg-white rounded-lg shadow-md relative">
+        {/* 🔥 追加: ゲーム中でもフローティングタイマーを表示 */}
+        <FloatingPomodoroTimer />
+        
         {/* ヘッダー */}
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold flex items-center">
             🎮 {getGameInfo(selectedGame).name}
+            {/* 🔥 追加: ゲーム中のポモドーロ表示 */}
+            <span className="ml-3 text-sm text-gray-500">
+              ⏱️ ポモドーロも同時に実行中
+            </span>
           </h2>
           <button
             onClick={handleGameEnd}
@@ -163,6 +169,13 @@ export default function GameCenter() {
           {selectedGame === 'dino' && <DinoGame />}
           {selectedGame === 'flappy' && <FlappyGame />}
         </div>
+        
+        {/* 🔥 追加: ゲーム中のヒント */}
+        <div className="p-4 border-t bg-blue-50">
+          <p className="text-sm text-blue-700 text-center">
+            💡 ヒント: ポモドーロタイマーはゲーム中も動き続けます。フローティングタイマーをドラッグして好きな位置に移動できます。
+          </p>
+        </div>
       </div>
     );
   }
@@ -175,7 +188,6 @@ export default function GameCenter() {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">🎮 ゲームセンター</h2>
           <div className="flex items-center space-x-4">
-            {/* 🔥 追加: データ更新ボタン */}
             <button
               onClick={handleRefreshData}
               className="text-sm text-blue-500 hover:text-blue-700"
@@ -213,12 +225,20 @@ export default function GameCenter() {
           {/* ゲーム選択タブ */}
           {currentTab === 'games' && (
             <motion.div
-              key={`games-${refreshKey}`} // 🔥 修正: キーに refreshKey を追加
+              key={`games-${refreshKey}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               className="space-y-4"
             >
+              {/* 🔥 追加: ポモドーロとの連携情報 */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-purple-800">
+                  <span className="font-medium">⏱️ ポモドーロ連携機能:</span> 
+                  ゲーム中でもポモドーロタイマーが継続動作します。集中時間を無駄にせずにリフレッシュできます！
+                </p>
+              </div>
+              
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-yellow-800">
                   <span className="font-medium">💡 ゲームルール:</span> 
@@ -281,7 +301,7 @@ export default function GameCenter() {
           {/* 統計タブ */}
           {currentTab === 'stats' && (
             <motion.div
-              key={`stats-${refreshKey}`} // 🔥 修正: キーに refreshKey を追加
+              key={`stats-${refreshKey}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -347,7 +367,7 @@ export default function GameCenter() {
           {/* 履歴タブ */}
           {currentTab === 'history' && (
             <motion.div
-              key={`history-${refreshKey}`} // 🔥 修正: キーに refreshKey を追加
+              key={`history-${refreshKey}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -372,7 +392,7 @@ export default function GameCenter() {
                     
                     return (
                       <div 
-                        key={history.id || `${history.timestamp}-${index}`} // 🔥 修正: より確実なキー
+                        key={history.id || `${history.timestamp}-${index}`}
                         className="flex justify-between items-center bg-gray-50 p-3 rounded-lg"
                       >
                         <div className="flex items-center">
