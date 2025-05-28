@@ -1,11 +1,12 @@
 /**
- * 拡張タスク追加コンポーネント
+ * 拡張タスク追加コンポーネント（キーボード途切れバグ修正版）
  * 
  * メモ機能付きのタスク追加フォーム
  * AI優先度提案、期限設定、見積もり時間設定も含む
+ * v1.6.0: AI優先度提案によるキーボード途切れ問題を修正
  */
 
-import { useState, useRef, FormEvent } from 'react';
+import { useState, useRef, FormEvent, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { useAuthStore } from '@/store/auth';
@@ -29,7 +30,71 @@ export default function EnhancedAddTask() {
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | ''>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // 🔥 追加: AI優先度提案の状態管理
+  const [aiSuggestionLoading, setAiSuggestionLoading] = useState(false);
+  const [lastSuggestedText, setLastSuggestedText] = useState('');
+  
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 🔥 修正: デバウンス機能付きAI優先度提案
+   * キーボード入力を妨げないように500ms後に実行
+   */
+  const debouncedSuggestPriority = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      
+      return (inputText: string) => {
+        // 前回のタイマーをクリア
+        clearTimeout(timeoutId);
+        
+        // 500ms後に実行（ユーザーの入力が止まってから実行）
+        timeoutId = setTimeout(async () => {
+          // 空文字列や短すぎるテキストはスキップ
+          if (!inputText.trim() || inputText.length < 6) {
+            return;
+          }
+          
+          // 前回と同じテキストの場合はスキップ
+          if (inputText === lastSuggestedText) {
+            return;
+          }
+          
+          try {
+            setAiSuggestionLoading(true);
+            console.log('AI優先度提案開始:', inputText);
+            
+            const suggestedPriority = await suggestPriority(inputText);
+            
+            // テキストが変更されていない場合のみ適用
+            if (inputText === text) {
+              setPriority(suggestedPriority);
+              setLastSuggestedText(inputText);
+              console.log('AI優先度提案完了:', suggestedPriority);
+            }
+            
+          } catch (error) {
+            console.error('AI優先度提案エラー:', error);
+          } finally {
+            setAiSuggestionLoading(false);
+          }
+        }, 500);
+      };
+    })(),
+    [text, lastSuggestedText]
+  );
+
+  /**
+   * 🔥 修正: タスクテキスト変更処理（非同期処理を分離）
+   */
+  const handleTextChange = useCallback((value: string) => {
+    // 即座にテキストを更新（UIの反応性を保つ）
+    setText(value);
+    
+    // AI提案は非同期で実行（キーボード入力を妨げない）
+    debouncedSuggestPriority(value);
+  }, [debouncedSuggestPriority]);
 
   /**
    * タスク追加フォーム送信処理
@@ -68,6 +133,7 @@ export default function EnhancedAddTask() {
       setMemo('');
       setEstimatedMinutes('');
       setShowAdvanced(false);
+      setLastSuggestedText(''); // 🔥 追加: AI提案履歴をリセット
       
       // 入力フィールドにフォーカス
       inputRef.current?.focus();
@@ -76,27 +142,6 @@ export default function EnhancedAddTask() {
       setMessage('タスクの追加に失敗しました');
     } finally {
       setLoading(false);
-    }
-  };
-
-  /**
-   * タスクテキストが変更された時のハンドラー
-   * AIによる優先度提案を取得
-   */
-  const handleTextChange = async (value: string) => {
-    setText(value);
-    
-    // テキストが十分な長さの場合、AIによる優先度提案を取得
-    if (value.length > 5) {
-      setLoading(true);
-      try {
-        const suggestedPriority = await suggestPriority(value);
-        setPriority(suggestedPriority);
-      } catch (error) {
-        console.error('優先度提案エラー:', error);
-      } finally {
-        setLoading(false);
-      }
     }
   };
 
@@ -134,6 +179,23 @@ export default function EnhancedAddTask() {
     return options;
   };
 
+  /**
+   * 🔥 追加: AI提案の状態表示
+   */
+  const aiSuggestionStatus = useMemo(() => {
+    if (aiSuggestionLoading) {
+      return { text: 'AI分析中...', color: 'text-blue-500' };
+    }
+    if (text.length > 5 && lastSuggestedText === text) {
+      const priorityText = priority === 'high' ? '高優先度' : priority === 'medium' ? '中優先度' : '低優先度';
+      return { text: `AI提案: ${priorityText}`, color: 'text-green-600' };
+    }
+    if (text.length > 0 && text.length <= 5) {
+      return { text: 'もう少し詳しく入力してください', color: 'text-gray-500' };
+    }
+    return null;
+  }, [text, priority, aiSuggestionLoading, lastSuggestedText]);
+
   return (
     <form onSubmit={handleSubmit} className="mb-4 relative">
       {/* メインのタスク入力フィールド */}
@@ -148,10 +210,10 @@ export default function EnhancedAddTask() {
           disabled={loading}
         />
         
-        {/* AI処理中のローディング表示 */}
-        {loading && (
+        {/* 🔥 修正: AI処理中のローディング表示（より目立たないように） */}
+        {aiSuggestionLoading && (
           <div className="absolute top-2 right-2">
-            <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="h-4 w-4 border-2 border-blue-300 border-t-transparent rounded-full animate-spin opacity-60"></div>
           </div>
         )}
       </div>
@@ -166,10 +228,13 @@ export default function EnhancedAddTask() {
           {showAdvanced ? '▼' : '▶'} 詳細設定
         </button>
         
-        {/* AI提案中の表示 */}
-        {text.length > 5 && (
-          <p className="text-xs text-gray-500">
-            AI提案: {loading ? '分析中...' : priority === 'high' ? '高優先度' : priority === 'medium' ? '中優先度' : '低優先度'}
+        {/* 🔥 修正: AI提案状態の表示（改善版） */}
+        {aiSuggestionStatus && (
+          <p className={`text-xs ${aiSuggestionStatus.color} flex items-center`}>
+            {aiSuggestionLoading && (
+              <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin mr-1"></div>
+            )}
+            {aiSuggestionStatus.text}
           </p>
         )}
       </div>
@@ -184,7 +249,7 @@ export default function EnhancedAddTask() {
             className="overflow-hidden mb-3"
           >
             <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              {/* 期限と優先度の設定 */}
+              {/* 期限と見積もり時間の設定 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* 期限設定 */}
                 <div>
@@ -223,6 +288,10 @@ export default function EnhancedAddTask() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   優先度
+                  {/* 🔥 追加: AI提案の説明 */}
+                  {aiSuggestionStatus && lastSuggestedText === text && (
+                    <span className="ml-2 text-xs text-green-600">(AI提案済み)</span>
+                  )}
                 </label>
                 <div className="flex space-x-2">
                   {(['high', 'medium', 'low'] as const).map((p) => (
@@ -230,8 +299,8 @@ export default function EnhancedAddTask() {
                       key={p}
                       type="button"
                       onClick={() => setPriority(p)}
-                      className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium ${
-                        priority === p ? getPriorityClass(p) : 'bg-gray-100 text-gray-600 border-gray-300'
+                      className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        priority === p ? getPriorityClass(p) : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
                       }`}
                     >
                       {p === 'high' ? '高優先度' : p === 'medium' ? '中優先度' : '低優先度'}
@@ -286,6 +355,7 @@ export default function EnhancedAddTask() {
       {!showAdvanced && (
         <p className="text-xs text-gray-500 mt-2 text-center">
           💡 「詳細設定」でメモや見積もり時間を設定できます
+          {text.length > 5 && <span className="ml-2">• AIが自動で優先度を判定します</span>}
         </p>
       )}
     </form>

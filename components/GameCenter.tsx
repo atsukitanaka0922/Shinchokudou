@@ -1,9 +1,9 @@
 /**
- * ゲームセンターメインコンポーネント（ポモドーロ継続対応）
+ * ゲームセンターメインコンポーネント（フローティングポモドーロタイマー修正版）
  * 
  * ポイント消費型ゲームのメイン画面
  * ゲーム選択、統計表示、プレイ履歴管理を提供
- * v1.6.0: ゲーム中でもポモドーロタイマーが継続動作
+ * v1.6.0: ゲーム中でもポモドーロタイマーが継続動作（修正版）
  */
 
 import { useState, useEffect } from 'react';
@@ -13,7 +13,7 @@ import { usePointStore } from '@/store/pointStore';
 import { useAuthStore } from '@/store/auth';
 import DinoGame from './DinoGame';
 import FlappyGame from './FlappyGame';
-import FloatingPomodoroTimer from './FloatingPomodoroTimer'; // 🔥 追加
+import FloatingPomodoroTimer from './FloatingPomodoroTimer';
 
 /**
  * ゲームセンターメインコンポーネント
@@ -144,14 +144,13 @@ export default function GameCenter() {
   if (selectedGame) {
     return (
       <div className="bg-white rounded-lg shadow-md relative">
-        {/* 🔥 追加: ゲーム中でもフローティングタイマーを表示 */}
+        {/* 🔥 修正: フローティングタイマーを確実に表示 */}
         <FloatingPomodoroTimer />
         
         {/* ヘッダー */}
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold flex items-center">
             🎮 {getGameInfo(selectedGame).name}
-            {/* 🔥 追加: ゲーム中のポモドーロ表示 */}
             <span className="ml-3 text-sm text-gray-500">
               ⏱️ ポモドーロも同時に実行中
             </span>
@@ -170,7 +169,7 @@ export default function GameCenter() {
           {selectedGame === 'flappy' && <FlappyGame />}
         </div>
         
-        {/* 🔥 追加: ゲーム中のヒント */}
+        {/* ゲーム中のヒント */}
         <div className="p-4 border-t bg-blue-50">
           <p className="text-sm text-blue-700 text-center">
             💡 ヒント: ポモドーロタイマーはゲーム中も動き続けます。フローティングタイマーをドラッグして好きな位置に移動できます。
@@ -183,6 +182,9 @@ export default function GameCenter() {
   // メイン画面
   return (
     <div className="bg-white rounded-lg shadow-md">
+      {/* 🔥 修正: メイン画面でもフローティングタイマーを表示 */}
+      <FloatingPomodoroTimer />
+      
       {/* ヘッダー */}
       <div className="p-4 border-b">
         <div className="flex justify-between items-center">
@@ -231,7 +233,7 @@ export default function GameCenter() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-4"
             >
-              {/* 🔥 追加: ポモドーロとの連携情報 */}
+              {/* ポモドーロとの連携情報 */}
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-purple-800">
                   <span className="font-medium">⏱️ ポモドーロ連携機能:</span> 

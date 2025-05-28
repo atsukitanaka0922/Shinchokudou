@@ -1,8 +1,8 @@
 /**
- * 拡張タスクリストコンポーネント（ソート機能付き）
+ * 拡張タスクリストコンポーネント（バグ修正版）
  * 
  * サブタスクとメモ機能を含む拡張されたタスクリスト
- * v1.6.0: タスクソート機能とゲーム中ポモドーロタイマー継続機能を追加
+ * v1.6.0: 優先度変更バグを修正
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -12,8 +12,6 @@ import { useAuthStore } from '@/store/auth';
 import { PriorityLevel } from '@/lib/aiPriorityAssignment';
 import { SubTaskUtils, TaskUtils, TaskSortBy, EnhancedTask } from '@/lib/taskInterfaces';
 import FloatingPomodoroTimer from './FloatingPomodoroTimer';
-
-/**
 
 /**
  * ソートオプションの型定義
@@ -60,13 +58,16 @@ export default function EnhancedTaskList() {
   
   // ローカル状態
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [sortBy, setSortBy] = useState<TaskSortBy>('priority'); // 🔥 追加: ソート状態
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // 🔥 追加: ソート順序
+  const [sortBy, setSortBy] = useState<TaskSortBy>('priority');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<{taskId: string, field: string} | null>(null);
   const [editValues, setEditValues] = useState<{[key: string]: any}>({});
   const [newSubTaskText, setNewSubTaskText] = useState<{[taskId: string]: string}>({});
   const [mounted, setMounted] = useState(false);
+  
+  // 🔥 追加: 優先度変更の処理中状態を管理
+  const [priorityChanging, setPriorityChanging] = useState<{[taskId: string]: boolean}>({});
   
   // コンポーネントのマウント状態を追跡
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function EnhancedTaskList() {
   }, [user, loadTasks]);
 
   /**
-   * 🔥 追加: タスクをソートする関数
+   * タスクをソートする関数
    */
   const sortTasks = (tasksToSort: EnhancedTask[]): EnhancedTask[] => {
     const sorted = [...tasksToSort].sort((a, b) => {
@@ -134,7 +135,7 @@ export default function EnhancedTaskList() {
   };
 
   /**
-   * 🔥 追加: フィルターとソートを適用したタスクリスト
+   * フィルターとソートを適用したタスクリスト
    */
   const filteredAndSortedTasks = useMemo(() => {
     // フィルター適用
@@ -149,7 +150,7 @@ export default function EnhancedTaskList() {
   }, [tasks, filter, sortBy, sortOrder]);
 
   /**
-   * 🔥 追加: ソート順序を切り替える
+   * ソート順序を切り替える
    */
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -219,6 +220,53 @@ export default function EnhancedTaskList() {
   };
 
   /**
+   * 🔥 修正: 優先度を直接変更する関数（処理中フラグ付き）
+   */
+  const handlePriorityChange = async (taskId: string, newPriority: PriorityLevel) => {
+    // 重複実行を防止
+    if (priorityChanging[taskId]) {
+      console.log('優先度変更処理中のため、リクエストをスキップ');
+      return;
+    }
+
+    try {
+      // 処理中フラグを設定
+      setPriorityChanging(prev => ({ ...prev, [taskId]: true }));
+      
+      console.log(`優先度変更開始: taskId=${taskId}, priority=${newPriority}`);
+      
+      // 編集値を即座に更新（UI反応性向上）
+      setEditValues(prev => ({
+        ...prev,
+        [`${taskId}_priority`]: newPriority
+      }));
+      
+      // Firestoreに保存
+      await setPriority(taskId, newPriority);
+      
+      console.log(`優先度変更完了: taskId=${taskId}, priority=${newPriority}`);
+      
+      // 編集モードを終了
+      setEditingField(null);
+      
+    } catch (error) {
+      console.error('優先度変更エラー:', error);
+      
+      // エラー時は元の値に戻す
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        setEditValues(prev => ({
+          ...prev,
+          [`${taskId}_priority`]: task.priority
+        }));
+      }
+    } finally {
+      // 処理中フラグを解除
+      setPriorityChanging(prev => ({ ...prev, [taskId]: false }));
+    }
+  };
+
+  /**
    * サブタスクを追加
    */
   const handleAddSubTask = async (taskId: string) => {
@@ -254,6 +302,26 @@ export default function EnhancedTaskList() {
     }
   };
   
+  // 優先度に応じたスタイルクラスを取得
+  const getPriorityClass = (priority: PriorityLevel) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-300';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'low': return 'bg-green-100 text-green-800 border-green-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+  
+  // 優先度表示テキストを取得
+  const getPriorityText = (priority: PriorityLevel) => {
+    switch (priority) {
+      case 'high': return '高';
+      case 'medium': return '中';
+      case 'low': return '低';
+      default: return '中';
+    }
+  };
+
   // クライアントサイドレンダリングの確認
   if (!mounted) {
     return (
@@ -304,26 +372,6 @@ export default function EnhancedTaskList() {
       </div>
     );
   }
-  
-  // 優先度に応じたスタイルクラスを取得
-  const getPriorityClass = (priority: PriorityLevel) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'low': return 'bg-green-100 text-green-800 border-green-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-  
-  // 優先度表示テキストを取得
-  const getPriorityText = (priority: PriorityLevel) => {
-    switch (priority) {
-      case 'high': return '高';
-      case 'medium': return '中';
-      case 'low': return '低';
-      default: return '中';
-    }
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-md">
@@ -347,7 +395,7 @@ export default function EnhancedTaskList() {
         ))}
       </div>
       
-      {/* 🔥 追加: ソートコントロール */}
+      {/* ソートコントロール */}
       <div className="px-3 py-3 border-b bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -634,7 +682,7 @@ export default function EnhancedTaskList() {
                           </div>
                         </div>
                         
-                        {/* 優先度編集 */}
+                        {/* 🔥 修正: 優先度編集（即座反映版） */}
                         <div>
                           <div className="flex justify-between items-center mb-2">
                             <label className="block text-sm font-medium text-gray-700">
@@ -643,8 +691,10 @@ export default function EnhancedTaskList() {
                             <button
                               onClick={() => toggleEdit(task.id, 'priority')}
                               className="text-xs text-blue-500 hover:text-blue-700"
+                              disabled={priorityChanging[task.id]}
                             >
-                              {editingField?.taskId === task.id && editingField?.field === 'priority' ? 'キャンセル' : '編集'}
+                              {priorityChanging[task.id] ? '変更中...' :
+                               editingField?.taskId === task.id && editingField?.field === 'priority' ? 'キャンセル' : '編集'}
                             </button>
                           </div>
                           
@@ -653,20 +703,24 @@ export default function EnhancedTaskList() {
                               {(['high', 'medium', 'low'] as const).map((p) => (
                                 <button
                                   key={p}
-                                  onClick={() => {
-                                    setEditValues({
-                                      ...editValues,
-                                      [`${task.id}_priority`]: p
-                                    });
-                                    saveEdit(task.id, 'priority');
-                                  }}
-                                  className={`flex-1 px-3 py-1 text-xs rounded ${
-                                    task.priority === p
+                                  onClick={() => handlePriorityChange(task.id, p)}
+                                  disabled={priorityChanging[task.id]}
+                                  className={`flex-1 px-3 py-1 text-xs rounded transition-colors ${
+                                    editValues[`${task.id}_priority`] === p
                                       ? getPriorityClass(p)
-                                      : 'bg-gray-200 text-gray-700'
+                                      : priorityChanging[task.id]
+                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                   }`}
                                 >
-                                  {p === 'high' ? '高' : p === 'medium' ? '中' : '低'}
+                                  {priorityChanging[task.id] && editValues[`${task.id}_priority`] === p ? (
+                                    <span className="flex items-center justify-center">
+                                      <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin mr-1"></div>
+                                      {p === 'high' ? '高' : p === 'medium' ? '中' : '低'}
+                                    </span>
+                                  ) : (
+                                    p === 'high' ? '高' : p === 'medium' ? '中' : '低'
+                                  )}
                                 </button>
                               ))}
                             </div>

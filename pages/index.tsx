@@ -1,9 +1,9 @@
 /**
- * ホームページ (ルート) コンポーネント
+ * ホームページ (ルート) コンポーネント（ポモドーロタイマー統一版）
  * 
  * アプリケーションのメインビューを提供
  * レスポンシブデザインに対応し、モバイルとデスクトップで最適なUIを表示
- * v1.5.0: ゲームセンター機能を追加
+ * v1.6.0: フローティングポモドーロタイマーに統一
  */
 
 import { useEffect, useState } from "react";
@@ -27,7 +27,7 @@ import Dashboard from "@/components/Dashboard";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import Feedback from "@/components/Feedback";
 import FloatingMenu from "@/components/FloatingMenu";
-import PomodoroStats from "@/components/PomodoroStats";
+import FloatingPomodoroTimer from "@/components/FloatingPomodoroTimer"; // 🔥 統一されたタイマー
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
@@ -155,6 +155,8 @@ export default function Home() {
         <Feedback />       {/* フィードバック通知 */}
         <DeadlineWarning />{/* 締め切り警告 */}
         <FloatingMenu />   {/* 設定メニュー */}
+        {/* 🔥 追加: 全画面でフローティングポモドーロタイマーを表示 */}
+        <FloatingPomodoroTimer />
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
         {!user ? (
@@ -209,7 +211,7 @@ export default function Home() {
                       <TaskStats />
                       <EnhancedAddTask />
                       <EnhancedTaskList />
-                      <PomodoroStats />
+                      {/* 🔥 削除: PomodoroStats - フローティングタイマーに統一 */}
                     </>
                   ) : (
                     <>
@@ -229,7 +231,7 @@ export default function Home() {
                       <AppLogo width={100} height={100} className="mr-4" />
                       <div>
                         <h1 className="text-3xl font-bold">進捗堂</h1>
-                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.5.1</p>
+                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.6.0</p>
                       </div>
                     </div>
                     <AuthButton />
@@ -301,9 +303,21 @@ export default function Home() {
                         <TaskStats />
                       </motion.div>
                       
+                      {/* 🔥 修正: ポモドーロセクションを情報カードに変更 */}
                       <motion.div className="p-6 rounded-lg shadow-lg bg-white">
-                        <h2 className="text-xl font-bold mb-4">⏳ ポモドーロタイマー</h2>
-                        <PomodoroStats />
+                        <h2 className="text-xl font-bold mb-4">⏱️ ポモドーロタイマー</h2>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <p className="text-sm text-blue-800 mb-3">
+                            <span className="font-medium">💡 フローティングタイマー:</span> 
+                            タスクの「⏳」ボタンでポモドーロを開始すると、画面に浮かぶタイマーが表示されます。
+                          </p>
+                          <div className="space-y-2 text-sm text-blue-700">
+                            <p>• ドラッグで好きな位置に移動可能</p>
+                            <p>• ゲーム中でも動作継続</p>
+                            <p>• 最小化/展開機能付き</p>
+                            <p>• アラーム音で終了をお知らせ</p>
+                          </div>
+                        </div>
                       </motion.div>
                       
                       {/* PWAインストールガイド */}
@@ -398,7 +412,7 @@ function InstallPWAGuide() {
 
 /**
  * 新機能紹介カードコンポーネント
- * v1.5.0で追加された新機能を紹介
+ * v1.6.0で追加された新機能を紹介
  */
 function NewFeaturesCard() {
   const [showFeatures, setShowFeatures] = useState(true);
@@ -413,7 +427,7 @@ function NewFeaturesCard() {
       transition={{ delay: 1.2 }}
     >
       <div className="flex justify-between items-start">
-        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 新機能追加！</h2>
+        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 v1.6.0 新機能！</h2>
         <button
           onClick={() => setShowFeatures(false)}
           className="text-purple-500 hover:text-purple-700"
@@ -425,26 +439,26 @@ function NewFeaturesCard() {
       
       <div className="space-y-2 text-sm text-purple-700">
         <div className="flex items-center">
+          <span className="mr-2">⏱️</span>
+          <span>フローティングポモドーロタイマー</span>
+        </div>
+        <div className="flex items-center">
           <span className="mr-2">🎮</span>
-          <span>ゲームセンター - ポイントでゲームプレイ</span>
-        </div>
-        <div className="flex items-center">
-          <span className="mr-2">🦕</span>
-          <span>ディノラン - ジャンプアクションゲーム</span>
-        </div>
-        <div className="flex items-center">
-          <span className="mr-2">🐦</span>
-          <span>フラッピーバード - 羽ばたきゲーム</span>
+          <span>ゲーム中でもタイマー継続動作</span>
         </div>
         <div className="flex items-center">
           <span className="mr-2">📊</span>
-          <span>ゲーム統計 - スコアランキング機能</span>
+          <span>タスクソート機能（5種類の並び順）</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">📱</span>
+          <span>スマートフォン最適化完了</span>
         </div>
       </div>
       
       <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
         <p className="text-xs text-purple-600">
-          <strong>v1.5.0の特徴:</strong> タスク管理で貯めたポイントでゲームを楽しみ、よりモチベーションを維持できるゲーミフィケーション機能を追加しました。
+          <strong>v1.6.0の特徴:</strong> ゲーム中でもポモドーロタイマーが動作し続け、生産性とリフレッシュのバランスを最適化。タスク管理もより使いやすくなりました。
         </p>
       </div>
     </motion.div>
@@ -481,6 +495,11 @@ function GameCenterGuide() {
         <div className="bg-white p-3 rounded-lg border border-green-100">
           <p className="font-medium text-green-800 mb-1">💰 ポイント消費システム</p>
           <p>1回のプレイに5ポイント必要です。タスクを完了してポイントを貯めましょう！</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-green-100">
+          <p className="font-medium text-green-800 mb-1">⏱️ v1.6.0新機能: ポモドーロ連携</p>
+          <p>ゲーム中でもポモドーロタイマーが継続動作！効率的な休憩時間を楽しめます。</p>
         </div>
         
         <div className="bg-white p-3 rounded-lg border border-green-100">
