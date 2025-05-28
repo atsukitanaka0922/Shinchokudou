@@ -1,8 +1,8 @@
 /**
- * ポイントショップ管理ストア
+ * ポイントショップ管理ストア（エラーハンドリング強化版）
  * 
  * ポイントで購入できるアイテム（背景テーマなど）を管理するZustandストア
- * v1.6.0: 新機能 - グラデーション背景ショップ
+ * v1.6.1: Firebaseパーミッションエラーの修正とエラーハンドリング強化
  */
 
 import { create } from "zustand";
@@ -15,7 +15,8 @@ import {
   updateDoc, 
   query, 
   where, 
-  getDocs 
+  getDocs,
+  serverTimestamp 
 } from "firebase/firestore";
 import { useAuthStore } from "@/store/auth";
 import { usePointStore } from "@/store/pointStore";
@@ -60,6 +61,7 @@ interface ShopState {
   shopItems: ShopItem[];
   userPurchases: UserPurchase[];
   loading: boolean;
+  error: string | null;  // 🔥 追加: エラー状態管理
   
   // アイテム管理
   loadShopItems: () => void;
@@ -69,6 +71,9 @@ interface ShopState {
   purchaseItem: (itemId: string) => Promise<boolean>;
   canPurchaseItem: (itemId: string) => boolean;
   hasPurchasedItem: (itemId: string) => boolean;
+  
+  // エラー管理
+  clearError: () => void;  // 🔥 追加: エラークリア
   
   // ユーティリティ
   getItemById: (itemId: string) => ShopItem | undefined;
@@ -155,6 +160,30 @@ const SHOP_ITEMS: ShopItem[] = [
 ];
 
 /**
+ * Firebaseエラーを日本語メッセージに変換
+ */
+const translateFirebaseError = (errorCode: string): string => {
+  switch (errorCode) {
+    case 'permission-denied':
+      return 'アクセス権限がありません。ログインし直してください。';
+    case 'not-found':
+      return 'データが見つかりませんでした。';
+    case 'already-exists':
+      return 'データが既に存在します。';
+    case 'failed-precondition':
+      return 'データの前提条件が満たされていません。';
+    case 'invalid-argument':
+      return '無効な引数が指定されました。';
+    case 'unauthenticated':
+      return '認証が必要です。ログインしてください。';
+    case 'unavailable':
+      return 'サービスが一時的に利用できません。しばらく後でお試しください。';
+    default:
+      return `エラーが発生しました: ${errorCode}`;
+  }
+};
+
+/**
  * ポイントショップ管理Zustandストア
  */
 export const useShopStore = create<ShopState>()(
@@ -163,6 +192,7 @@ export const useShopStore = create<ShopState>()(
       shopItems: SHOP_ITEMS,
       userPurchases: [],
       loading: false,
+      error: null, // 🔥 追加: エラー状態
 
       /**
        * ショップアイテムを読み込む（将来的にFirestoreから取得予定）
@@ -170,21 +200,25 @@ export const useShopStore = create<ShopState>()(
       loadShopItems: () => {
         // 現在は固定アイテムを使用
         // 将来的にはFirestoreからアイテム情報を取得
-        set({ shopItems: SHOP_ITEMS });
+        set({ shopItems: SHOP_ITEMS, error: null });
       },
 
       /**
-       * ユーザーの購入履歴を読み込む
+       * 🔥 修正: ユーザーの購入履歴を読み込む（エラーハンドリング強化）
        */
       loadUserPurchases: async () => {
         const user = useAuthStore.getState().user;
         if (!user) {
-          set({ userPurchases: [] });
+          console.log("ユーザーがログインしていないため、購入履歴を取得できません");
+          set({ userPurchases: [], error: null });
           return;
         }
 
-        set({ loading: true });
+        set({ loading: true, error: null });
+        
         try {
+          console.log(`ユーザー ${user.uid} の購入履歴を取得中...`);
+          
           const purchasesQuery = query(
             collection(db, "shopPurchases"),
             where("userId", "==", user.uid)
@@ -199,19 +233,30 @@ export const useShopStore = create<ShopState>()(
           // タイムスタンプでソート（新しい順）
           purchases.sort((a, b) => b.purchaseTime - a.purchaseTime);
           
-          set({ userPurchases: purchases });
-          console.log("ショップ購入履歴を取得:", purchases.length, "件");
+          set({ userPurchases: purchases, loading: false, error: null });
+          console.log("ショップ購入履歴を取得成功:", purchases.length, "件");
           
-        } catch (error) {
+        } catch (error: any) {
           console.error("ショップ購入履歴読み込みエラー:", error);
-          set({ userPurchases: [] });
-        } finally {
-          set({ loading: false });
+          
+          const errorMessage = error.code ? 
+            translateFirebaseError(error.code) : 
+            "購入履歴の読み込みに失敗しました";
+          
+          set({ 
+            userPurchases: [], 
+            loading: false, 
+            error: errorMessage 
+          });
+          
+          // フィードバックでエラーを表示
+          const feedbackStore = useFeedbackStore.getState();
+          feedbackStore.setMessage(`❌ ${errorMessage}`);
         }
       },
 
       /**
-       * アイテムを購入する
+       * 🔥 修正: アイテムを購入する（テーマストア連携強化）
        */
       purchaseItem: async (itemId) => {
         const user = useAuthStore.getState().user;
@@ -219,21 +264,21 @@ export const useShopStore = create<ShopState>()(
         
         if (!user) {
           const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage("ログインが必要です");
+          feedbackStore.setMessage("❌ ログインが必要です");
           return false;
         }
 
         const item = get().getItemById(itemId);
         if (!item) {
           const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage("アイテムが見つかりません");
+          feedbackStore.setMessage("❌ アイテムが見つかりません");
           return false;
         }
 
         // 購入可能チェック
         if (!get().canPurchaseItem(itemId)) {
           const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage("このアイテムは購入できません");
+          feedbackStore.setMessage("❌ このアイテムは購入できません");
           return false;
         }
 
@@ -241,14 +286,36 @@ export const useShopStore = create<ShopState>()(
         const currentPoints = pointStore.userPoints?.currentPoints || 0;
         if (currentPoints < item.price) {
           const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage(`ポイントが不足しています（必要: ${item.price}pt）`);
+          feedbackStore.setMessage(`❌ ポイントが不足しています（必要: ${item.price}pt）`);
           return false;
         }
 
+        set({ error: null }); // エラー状態をクリア
+        
         try {
+          console.log(`アイテム購入開始: ${item.name} (${item.price}pt)`);
+          
           const today = new Date().toISOString().split('T')[0];
           
-          // ポイントを消費
+          // 🔥 修正: サーバータイムスタンプを使用して確実にデータを保存
+          const purchaseData = {
+            userId: user.uid,
+            itemId: item.id,
+            purchaseDate: today,
+            purchaseTime: Date.now(),
+            pointsSpent: item.price,
+            createdAt: serverTimestamp() // 🔥 追加: サーバータイムスタンプ
+          };
+          
+          console.log("購入データ:", purchaseData);
+          
+          // 🔥 修正: トランザクション的にポイント消費と購入履歴を処理
+          
+          // 1. まず購入履歴を記録
+          const docRef = await addDoc(collection(db, "shopPurchases"), purchaseData);
+          console.log("購入履歴をFirestoreに保存完了:", docRef.id);
+          
+          // 2. ポイントを消費
           await pointStore.removePoints(
             'game_play', // ショップ購入もgame_playタイプを使用
             item.price,
@@ -257,9 +324,11 @@ export const useShopStore = create<ShopState>()(
             false, // 総獲得ポイントには影響しない
             undefined
           );
+          console.log("ポイント消費完了:", item.price);
           
-          // 購入履歴を記録
-          const purchaseData: Omit<UserPurchase, 'id'> = {
+          // 3. ローカル状態を更新
+          const newPurchase: UserPurchase = {
+            id: docRef.id,
             userId: user.uid,
             itemId: item.id,
             purchaseDate: today,
@@ -267,17 +336,19 @@ export const useShopStore = create<ShopState>()(
             pointsSpent: item.price
           };
           
-          const docRef = await addDoc(collection(db, "shopPurchases"), purchaseData);
-          
-          // ローカル状態を更新
-          const newPurchase: UserPurchase = {
-            id: docRef.id,
-            ...purchaseData
-          };
-          
           set(state => ({
-            userPurchases: [newPurchase, ...state.userPurchases]
+            userPurchases: [newPurchase, ...state.userPurchases],
+            error: null
           }));
+          
+          // 🔥 修正: テーマストアに購入済みテーマを追加
+          import('@/store/themeStore').then(({ useThemeStore }) => {
+            const themeStore = useThemeStore.getState();
+            themeStore.addPurchasedTheme(item.id);
+            console.log('テーマストアに購入済みテーマを追加:', item.id);
+          }).catch(error => {
+            console.error('テーマストアの動的インポートに失敗:', error);
+          });
           
           // 成功メッセージ
           const feedbackStore = useFeedbackStore.getState();
@@ -286,11 +357,24 @@ export const useShopStore = create<ShopState>()(
           console.log(`ショップ購入完了: ${item.name} (${item.price}pt)`);
           return true;
           
-        } catch (error) {
+        } catch (error: any) {
           console.error("ショップ購入エラー:", error);
           
+          const errorMessage = error.code ? 
+            translateFirebaseError(error.code) : 
+            "購入処理に失敗しました";
+          
+          set({ error: errorMessage });
+          
           const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage("購入処理に失敗しました");
+          feedbackStore.setMessage(`❌ ${errorMessage}`);
+          
+          // 詳細なエラー情報をコンソールに出力
+          if (error.code === 'permission-denied') {
+            console.error("🔥 Firestoreセキュリティルールを確認してください:");
+            console.error("shopPurchasesコレクションに対する読み書き権限が必要です");
+          }
+          
           return false;
         }
       },
@@ -322,6 +406,13 @@ export const useShopStore = create<ShopState>()(
        */
       hasPurchasedItem: (itemId) => {
         return get().userPurchases.some(purchase => purchase.itemId === itemId);
+      },
+
+      /**
+       * 🔥 追加: エラーをクリア
+       */
+      clearError: () => {
+        set({ error: null });
       },
 
       /**

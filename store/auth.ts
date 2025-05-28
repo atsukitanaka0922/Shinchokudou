@@ -1,8 +1,7 @@
 /**
- * 認証管理ストア
+ * 認証管理ストア（テーマリセット機能付き）
  * 
  * Firebase Authenticationを利用した認証機能を提供するZustandストア
- * ユーザーのログイン状態管理、ログイン・ログアウト機能を提供
  */
 
 import { create } from "zustand";
@@ -26,6 +25,7 @@ interface AuthState {
   user: User | null;       // 現在ログイン中のユーザー情報
   loading: boolean;        // 認証状態読み込み中フラグ
   authError: string | null; // 認証エラーメッセージ
+  previousUserId: string | null; // 🔥 追加: 前回のユーザーID
   
   // ログイン機能
   loginWithGoogle: () => Promise<void>;  // Google認証でログイン
@@ -82,6 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
   authError: null,
+  previousUserId: null, // 🔥 追加
 
   /**
    * Googleアカウントでログイン
@@ -202,7 +203,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   }
 }));
 
-// Firebase Auth の状態変更を監視し、ストアの状態を自動更新
+// 🔥 修正: Firebase Auth の状態変更を監視し、テーマストアとの連携を追加
 onAuthStateChanged(auth, (user) => {
-  useAuthStore.setState({ user, loading: false });
+  const authStore = useAuthStore.getState();
+  const previousUserId = authStore.previousUserId;
+  const currentUserId = user?.uid || null;
+  
+  // ユーザーが変更された場合の処理
+  if (previousUserId !== currentUserId) {
+    console.log('ユーザー変更を検出:', { 
+      previous: previousUserId, 
+      current: currentUserId 
+    });
+    
+    // 🔥 動的インポートでテーマストアを取得（循環参照を避ける）
+    import('@/store/themeStore').then(({ useThemeStore }) => {
+      const themeStore = useThemeStore.getState();
+      
+      // テーマストアにユーザー切り替えを通知
+      themeStore.switchUser(currentUserId);
+      
+      console.log('テーマストアにユーザー切り替えを通知しました');
+    }).catch(error => {
+      console.error('テーマストアの動的インポートに失敗:', error);
+    });
+  }
+  
+  // 認証ストアの状態を更新
+  useAuthStore.setState({ 
+    user, 
+    loading: false,
+    previousUserId: currentUserId // 🔥 追加: 前回のユーザーIDを記録
+  });
 });

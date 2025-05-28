@@ -1,12 +1,11 @@
 /**
- * ポイントショップコンポーネント（プレビュー機能完全削除版）
+ * ポイントショップコンポーネント（エラーハンドリング強化版）
  * 
  * ポイントで購入できるアイテム（背景テーマなど）を表示・購入するコンポーネント
- * v1.6.0: シンプルな購入・適用機能のみ
  */
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useShopStore, ShopItem } from '@/store/shopStore';
 import { usePointStore } from '@/store/pointStore';
 import { useThemeStore, PURCHASABLE_BACKGROUNDS } from '@/store/themeStore';
@@ -19,30 +18,43 @@ import { useFeedbackStore } from '@/store/feedbackStore';
 export default function Shop() {
   const { user } = useAuthStore();
   const { userPoints } = usePointStore();
-  const { setBackgroundTheme, backgroundTheme } = useThemeStore();
+  const { setBackgroundTheme, backgroundTheme, hasPurchasedTheme } = useThemeStore(); // 🔥 追加: hasPurchasedTheme
   const { setMessage } = useFeedbackStore();
   const { 
     shopItems, 
     userPurchases, 
     loading,
+    error, // 🔥 追加: エラー状態
     loadShopItems,
     loadUserPurchases,
     purchaseItem,
     canPurchaseItem,
     hasPurchasedItem,
-    getTotalSpentPoints
+    getTotalSpentPoints,
+    clearError // 🔥 追加: エラークリア
   } = useShopStore();
   
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'background'>('background');
   const [purchasingItem, setPurchasingItem] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0); // 🔥 追加: リトライ回数
 
   // データ読み込み
   useEffect(() => {
     if (user) {
+      console.log("ショップ: ユーザーログイン検出、データ読み込み開始");
       loadShopItems();
       loadUserPurchases();
     }
-  }, [user, loadShopItems, loadUserPurchases]);
+  }, [user, loadShopItems, loadUserPurchases, retryCount]);
+
+  /**
+   * 🔥 追加: データ読み込みリトライ
+   */
+  const handleRetry = () => {
+    console.log("ショップ: データ読み込みリトライ");
+    clearError();
+    setRetryCount(prev => prev + 1);
+  };
 
   /**
    * アイテムを購入してテーマを自動適用
@@ -50,10 +62,14 @@ export default function Shop() {
   const handlePurchase = async (item: ShopItem) => {
     if (purchasingItem) return;
     
+    console.log(`ショップ: アイテム購入開始 - ${item.name}`);
     setPurchasingItem(item.id);
+    
     try {
       const success = await purchaseItem(item.id);
       if (success) {
+        console.log(`ショップ: アイテム購入成功 - ${item.name}`);
+        
         // 購入成功後にデータを再読み込み
         await loadUserPurchases();
         
@@ -68,9 +84,14 @@ export default function Shop() {
             setBackgroundTheme(themeData);
             
             setMessage(`🎨 「${item.name}」を購入して適用しました！`);
+            console.log(`ショップ: テーマ適用完了 - ${item.name}`);
           }
         }
+      } else {
+        console.log(`ショップ: アイテム購入失敗 - ${item.name}`);
       }
+    } catch (error) {
+      console.error(`ショップ: アイテム購入エラー - ${item.name}:`, error);
     } finally {
       setPurchasingItem(null);
     }
@@ -84,6 +105,7 @@ export default function Shop() {
     if (themeData) {
       setBackgroundTheme(themeData);
       setMessage(`🎨 「${item.name}」を適用しました！`);
+      console.log(`ショップ: テーマ適用 - ${item.name}`);
     }
   };
 
@@ -166,6 +188,46 @@ export default function Shop() {
           </div>
         </div>
         
+        {/* 🔥 追加: エラー表示 */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-red-800">⚠️ エラーが発生しました</p>
+                  <p className="text-sm text-red-600 mt-1">{error}</p>
+                  {error.includes('権限') && (
+                    <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700">
+                      <p className="font-medium">解決方法:</p>
+                      <p>1. ページを再読み込みしてください</p>
+                      <p>2. 問題が続く場合は、一度ログアウトして再ログインしてください</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleRetry}
+                    className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                  >
+                    🔄 リトライ
+                  </button>
+                  <button
+                    onClick={clearError}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         {/* 統計情報 */}
         <div className="grid grid-cols-3 gap-4 text-center">
           <div className="bg-blue-50 p-3 rounded-lg">
@@ -216,6 +278,18 @@ export default function Shop() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-500">アイテムを読み込んでいます...</p>
           </div>
+        ) : error && userPurchases.length === 0 ? (
+          // 🔥 修正: エラー時の表示
+          <div className="text-center py-8">
+            <div className="text-red-500 text-4xl mb-4">⚠️</div>
+            <p className="text-gray-600 mb-4">データの読み込みに失敗しました</p>
+            <button
+              onClick={handleRetry}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              🔄 再試行
+            </button>
+          </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p>このカテゴリにはアイテムがありません</p>
@@ -223,17 +297,24 @@ export default function Shop() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredItems.map((item) => {
-              const isPurchased = hasPurchasedItem(item.id);
+              // 🔥 修正: テーマストアからも購入済み状態をチェック
+              const isPurchasedInShop = hasPurchasedItem(item.id);
+              const isPurchasedInTheme = hasPurchasedTheme(item.id);
+              const isPurchased = isPurchasedInShop || isPurchasedInTheme; // 両方をチェック
+              
               const canPurchase = canPurchaseItem(item.id);
               const isCurrentTheme = backgroundTheme.id === item.id;
               const currentPoints = userPoints?.currentPoints || 0;
               const hasEnoughPoints = currentPoints >= item.price;
+              const isProcessing = purchasingItem === item.id;
               
               return (
                 <motion.div
                   key={item.id}
-                  className={`border-2 rounded-lg p-4 transition-all ${getRarityStyle(item.rarity)}`}
-                  whileHover={{ scale: 1.02 }}
+                  className={`border-2 rounded-lg p-4 transition-all ${getRarityStyle(item.rarity)} ${
+                    isProcessing ? 'opacity-75' : ''
+                  }`}
+                  whileHover={{ scale: isProcessing ? 1 : 1.02 }}
                 >
                   {/* テーマプレビュー */}
                   <div 
@@ -262,6 +343,13 @@ export default function Shop() {
                         🎨 適用中
                       </div>
                     )}
+                    
+                    {/* 🔥 追加: 処理中オーバーレイ */}
+                    {isProcessing && (
+                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                        <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* アイテム情報 */}
@@ -271,7 +359,9 @@ export default function Shop() {
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold text-blue-600">💎 {item.price}pt</span>
                       {!hasEnoughPoints && !isPurchased && (
-                        <span className="text-xs text-red-500">ポイント不足</span>
+                        <span className="text-xs text-red-500">
+                          {item.price - currentPoints}pt 不足
+                        </span>
                       )}
                     </div>
                   </div>
@@ -282,11 +372,13 @@ export default function Shop() {
                       <div className="space-y-2">
                         <button
                           onClick={() => handleApplyTheme(item)}
-                          disabled={isCurrentTheme}
+                          disabled={isCurrentTheme || isProcessing}
                           className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
                             isCurrentTheme
                               ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                              : isProcessing
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
                           }`}
                         >
                           {isCurrentTheme ? '✓ 適用中' : '🎨 適用する'}
@@ -299,20 +391,22 @@ export default function Shop() {
                     ) : (
                       <button
                         onClick={() => handlePurchase(item)}
-                        disabled={!canPurchase || !hasEnoughPoints || purchasingItem === item.id}
+                        disabled={!canPurchase || !hasEnoughPoints || isProcessing || !!error}
                         className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                          !canPurchase || !hasEnoughPoints
+                          !canPurchase || !hasEnoughPoints || !!error
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : purchasingItem === item.id
-                              ? 'bg-blue-300 text-blue-700'
+                            : isProcessing
+                              ? 'bg-blue-300 text-blue-700 cursor-not-allowed'
                               : 'bg-blue-500 text-white hover:bg-blue-600'
                         }`}
                       >
-                        {purchasingItem === item.id ? (
+                        {isProcessing ? (
                           <span className="flex items-center justify-center">
                             <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
                             購入中...
                           </span>
+                        ) : error ? (
+                          'エラー: 再試行してください'
                         ) : !hasEnoughPoints ? (
                           `ポイント不足 (${item.price - currentPoints}pt 不足)`
                         ) : (
@@ -351,6 +445,31 @@ export default function Shop() {
               他 {userPurchases.length - 5} 件の購入履歴があります
             </p>
           )}
+        </div>
+      )}
+
+      {/* 🔥 追加: トラブルシューティングガイド */}
+      {error && (
+        <div className="p-4 border-t bg-yellow-50">
+          <h3 className="text-lg font-bold mb-3 text-yellow-800">🔧 トラブルシューティング</h3>
+          <div className="space-y-2 text-sm text-yellow-700">
+            <div className="bg-white p-3 rounded-lg border border-yellow-200">
+              <p className="font-medium">権限エラーの場合:</p>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>ブラウザを再読み込み（Ctrl+F5 または Cmd+R）</li>
+                <li>一度ログアウトして再ログイン</li>
+                <li>ブラウザのキャッシュクリア</li>
+              </ul>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-yellow-200">
+              <p className="font-medium">接続エラーの場合:</p>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>インターネット接続を確認</li>
+                <li>しばらく時間をおいて再試行</li>
+                <li>別のブラウザで試行</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

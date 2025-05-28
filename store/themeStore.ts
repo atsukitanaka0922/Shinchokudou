@@ -1,8 +1,7 @@
 /**
- * 拡張テーマ設定管理ストア（背景適用機能強化版）
+ * 拡張テーマ設定管理ストア（アカウント連携対応版）
  * 
  * アプリの見た目や色のテーマを管理するZustandストア
- * v1.6.0: ショップで購入した背景テーマの自動適用機能を追加
  */
 
 import { create } from "zustand";
@@ -25,12 +24,25 @@ export interface BackgroundTheme {
 }
 
 /**
+ * 🔥 追加: ユーザー別テーマ設定
+ */
+interface UserThemeSettings {
+  [userId: string]: {
+    backgroundTheme: BackgroundTheme;
+    bgColor: string;
+    purchasedThemes: string[]; // 購入済みテーマのIDリスト
+  };
+}
+
+/**
  * テーマ状態の型定義
  */
 interface ThemeState {
   // 基本設定
   bgColor: string;                    // レガシー: 単色背景
   backgroundTheme: BackgroundTheme;   // 新機能: 背景テーマ
+  currentUserId: string | null;       // 🔥 追加: 現在のユーザーID
+  userThemeSettings: UserThemeSettings; // 🔥 追加: ユーザー別設定
   
   // アクション
   setBgColor: (color: string) => void;
@@ -38,11 +50,16 @@ interface ThemeState {
   applyThemeToDOM: () => void;  // DOM要素に直接適用
   resetToDefault: () => void;   // デフォルトテーマに戻す
   
+  // 🔥 追加: アカウント管理
+  switchUser: (userId: string | null) => void; // ユーザー切り替え
+  clearUserData: (userId: string) => void;     // ユーザーデータクリア
+  
   // ユーティリティ
   getActiveBackground: () => string;
   isUsingGradient: () => boolean;
   getPurchasedThemes: () => BackgroundTheme[];
   addPurchasedTheme: (themeId: string) => void; // ショップ連携用
+  hasPurchasedTheme: (themeId: string) => boolean; // 🔥 追加: 購入済みチェック
 }
 
 /**
@@ -72,6 +89,18 @@ const DEFAULT_BACKGROUNDS: BackgroundTheme[] = [
     name: 'ウォームグレー',
     type: 'solid',
     value: '#f5f5f5'
+  },
+  {
+    id: 'default_light_green',
+    name: 'ライトグリーン',
+    type: 'solid',
+    value: '#f0fff0'
+  },
+  {
+    id: 'default_light_pink',
+    name: 'ライトピンク',
+    type: 'solid',
+    value: '#fff0f5'
   }
 ];
 
@@ -146,11 +175,14 @@ export const useThemeStore = create<ThemeState>()(
       // デフォルト設定
       bgColor: "#ffffff",
       backgroundTheme: DEFAULT_BACKGROUNDS[0],
+      currentUserId: null, // 🔥 追加
+      userThemeSettings: {}, // 🔥 追加
       
       /**
        * レガシー: 背景色を設定（単色のみ）
        */
       setBgColor: (color) => {
+        const { currentUserId } = get();
         const newTheme = {
           id: 'custom_solid',
           name: 'カスタム単色',
@@ -158,32 +190,144 @@ export const useThemeStore = create<ThemeState>()(
           value: color
         };
         
-        set({ 
-          bgColor: color,
-          backgroundTheme: newTheme
-        });
+        // 🔥 修正: ユーザー別に設定を保存
+        if (currentUserId) {
+          set(state => ({
+            bgColor: color,
+            backgroundTheme: newTheme,
+            userThemeSettings: {
+              ...state.userThemeSettings,
+              [currentUserId]: {
+                ...state.userThemeSettings[currentUserId],
+                bgColor: color,
+                backgroundTheme: newTheme
+              }
+            }
+          }));
+        } else {
+          set({ 
+            bgColor: color,
+            backgroundTheme: newTheme
+          });
+        }
         
         // DOM要素に即座に適用
         get().applyThemeToDOM();
       },
       
       /**
-       * 🔥 新機能: 背景テーマを設定（グラデーション対応）
+       * 🔥 修正: 背景テーマを設定（ユーザー別対応）
        */
       setBackgroundTheme: (theme) => {
-        console.log('テーマを設定:', theme);
+        const { currentUserId } = get();
+        console.log('テーマを設定:', theme, 'ユーザー:', currentUserId);
         
-        set({ 
-          backgroundTheme: theme,
-          bgColor: theme.type === 'solid' ? theme.value : '#ffffff' // グラデーションの場合はフォールバック
-        });
+        // 🔥 修正: ユーザー別に設定を保存
+        if (currentUserId) {
+          set(state => ({
+            backgroundTheme: theme,
+            bgColor: theme.type === 'solid' ? theme.value : '#ffffff',
+            userThemeSettings: {
+              ...state.userThemeSettings,
+              [currentUserId]: {
+                ...state.userThemeSettings[currentUserId],
+                backgroundTheme: theme,
+                bgColor: theme.type === 'solid' ? theme.value : '#ffffff',
+                purchasedThemes: state.userThemeSettings[currentUserId]?.purchasedThemes || []
+              }
+            }
+          }));
+        } else {
+          set({ 
+            backgroundTheme: theme,
+            bgColor: theme.type === 'solid' ? theme.value : '#ffffff'
+          });
+        }
         
         // DOM要素に即座に適用
         get().applyThemeToDOM();
       },
       
       /**
-       * 🔥 新機能: DOM要素に直接テーマを適用
+       * 🔥 新機能: ユーザー切り替え
+       */
+      switchUser: (userId) => {
+        console.log('ユーザー切り替え:', userId);
+        
+        if (!userId) {
+          // ログアウト時: デフォルトテーマに戻す
+          console.log('ログアウト検出: デフォルトテーマに戻します');
+          set({
+            currentUserId: null,
+            backgroundTheme: DEFAULT_BACKGROUNDS[0],
+            bgColor: DEFAULT_BACKGROUNDS[0].value
+          });
+          get().applyThemeToDOM();
+          return;
+        }
+        
+        const { userThemeSettings } = get();
+        const userSettings = userThemeSettings[userId];
+        
+        if (userSettings) {
+          // 既存のユーザー設定を復元
+          console.log('既存ユーザー設定を復元:', userSettings);
+          set({
+            currentUserId: userId,
+            backgroundTheme: userSettings.backgroundTheme,
+            bgColor: userSettings.bgColor
+          });
+        } else {
+          // 新規ユーザー: デフォルト設定で初期化
+          console.log('新規ユーザー: デフォルト設定で初期化');
+          const defaultTheme = DEFAULT_BACKGROUNDS[0];
+          set({
+            currentUserId: userId,
+            backgroundTheme: defaultTheme,
+            bgColor: defaultTheme.value,
+            userThemeSettings: {
+              ...userThemeSettings,
+              [userId]: {
+                backgroundTheme: defaultTheme,
+                bgColor: defaultTheme.value,
+                purchasedThemes: []
+              }
+            }
+          });
+        }
+        
+        get().applyThemeToDOM();
+      },
+      
+      /**
+       * 🔥 新機能: 特定ユーザーのデータをクリア
+       */
+      clearUserData: (userId) => {
+        console.log('ユーザーデータをクリア:', userId);
+        set(state => {
+          const newUserThemeSettings = { ...state.userThemeSettings };
+          delete newUserThemeSettings[userId];
+          
+          return {
+            userThemeSettings: newUserThemeSettings,
+            // 現在のユーザーの場合はデフォルトに戻す
+            ...(state.currentUserId === userId ? {
+              currentUserId: null,
+              backgroundTheme: DEFAULT_BACKGROUNDS[0],
+              bgColor: DEFAULT_BACKGROUNDS[0].value
+            } : {})
+          };
+        });
+        
+        // 現在のユーザーの場合はテーマも更新
+        const { currentUserId } = get();
+        if (currentUserId === userId || !currentUserId) {
+          get().applyThemeToDOM();
+        }
+      },
+      
+      /**
+       * DOM要素に直接テーマを適用
        */
       applyThemeToDOM: () => {
         if (typeof window === 'undefined' || !document.body) return;
@@ -213,11 +357,30 @@ export const useThemeStore = create<ThemeState>()(
        * デフォルトテーマに戻す
        */
       resetToDefault: () => {
+        const { currentUserId } = get();
         const defaultTheme = DEFAULT_BACKGROUNDS[0];
-        set({ 
-          backgroundTheme: defaultTheme,
-          bgColor: defaultTheme.value
-        });
+        
+        if (currentUserId) {
+          // ユーザー設定もリセット
+          set(state => ({
+            backgroundTheme: defaultTheme,
+            bgColor: defaultTheme.value,
+            userThemeSettings: {
+              ...state.userThemeSettings,
+              [currentUserId]: {
+                backgroundTheme: defaultTheme,
+                bgColor: defaultTheme.value,
+                purchasedThemes: state.userThemeSettings[currentUserId]?.purchasedThemes || []
+              }
+            }
+          }));
+        } else {
+          set({ 
+            backgroundTheme: defaultTheme,
+            bgColor: defaultTheme.value
+          });
+        }
+        
         get().applyThemeToDOM();
       },
       
@@ -238,26 +401,71 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 購入済みテーマのリストを取得
+       * 🔥 修正: 購入済みテーマのリストを取得（ユーザー別）
        */
       getPurchasedThemes: () => {
-        // 実際の実装では、ショップストアから購入済みアイテムを取得
-        // ここではサンプル実装
-        return Object.values(PURCHASABLE_BACKGROUNDS).filter(theme => theme.isPurchased);
+        const { currentUserId, userThemeSettings } = get();
+        if (!currentUserId || !userThemeSettings[currentUserId]) {
+          return [];
+        }
+        
+        const purchasedThemeIds = userThemeSettings[currentUserId].purchasedThemes || [];
+        return purchasedThemeIds
+          .map(themeId => PURCHASABLE_BACKGROUNDS[themeId])
+          .filter(Boolean);
       },
       
       /**
-       * 🔥 新機能: ショップ連携 - テーマを購入済みに設定
+       * 🔥 修正: ショップ連携 - テーマを購入済みに設定（ユーザー別）
        */
       addPurchasedTheme: (themeId) => {
+        const { currentUserId } = get();
+        if (!currentUserId) {
+          console.warn('ユーザーがログインしていないため、テーマを購入済みに設定できません');
+          return;
+        }
+        
         if (PURCHASABLE_BACKGROUNDS[themeId]) {
-          PURCHASABLE_BACKGROUNDS[themeId].isPurchased = true;
-          console.log(`テーマ「${themeId}」を購入済みに設定しました`);
+          set(state => {
+            const currentUserSettings = state.userThemeSettings[currentUserId] || {
+              backgroundTheme: DEFAULT_BACKGROUNDS[0],
+              bgColor: DEFAULT_BACKGROUNDS[0].value,
+              purchasedThemes: []
+            };
+            
+            const updatedPurchasedThemes = currentUserSettings.purchasedThemes.includes(themeId)
+              ? currentUserSettings.purchasedThemes
+              : [...currentUserSettings.purchasedThemes, themeId];
+            
+            return {
+              userThemeSettings: {
+                ...state.userThemeSettings,
+                [currentUserId]: {
+                  ...currentUserSettings,
+                  purchasedThemes: updatedPurchasedThemes
+                }
+              }
+            };
+          });
+          
+          console.log(`テーマ「${themeId}」をユーザー「${currentUserId}」の購入済みに設定しました`);
         }
       },
       
       /**
-       * 🔥 ヘルパー: 背景が明るいかどうかを判定
+       * 🔥 新機能: テーマを購入済みかチェック（ユーザー別）
+       */
+      hasPurchasedTheme: (themeId) => {
+        const { currentUserId, userThemeSettings } = get();
+        if (!currentUserId || !userThemeSettings[currentUserId]) {
+          return false;
+        }
+        
+        return userThemeSettings[currentUserId].purchasedThemes?.includes(themeId) || false;
+      },
+      
+      /**
+       * ヘルパー: 背景が明るいかどうかを判定
        */
       isLightBackground: (value: string) => {
         // 簡易的な明度判定（実際にはより複雑な計算が必要）
@@ -270,7 +478,7 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 🔥 ヘルパー: 色が明るいかどうかを判定
+       * ヘルパー: 色が明るいかどうかを判定
        */
       isLightColor: (hex: string) => {
         // HEX色を RGB に変換して輝度を計算
@@ -285,21 +493,23 @@ export const useThemeStore = create<ThemeState>()(
     }),
     { 
       name: "theme-storage",
-      version: 3, // v1.6.0でバージョンアップ
+      version: 4, // 🔥 v1.6.1でバージョンアップ
       migrate: (persistedState: any, version: number) => {
-        if (version < 3) {
+        if (version < 4) {
           // 旧バージョンからの移行
           const migratedState = {
-            ...persistedState,
-            backgroundTheme: {
+            bgColor: persistedState.bgColor || '#ffffff',
+            backgroundTheme: persistedState.backgroundTheme || {
               id: 'default_white',
               name: 'デフォルト（白）',
               type: 'solid',
               value: persistedState.bgColor || '#ffffff'
-            }
+            },
+            currentUserId: null, // 🔥 新機能: 初期値はnull
+            userThemeSettings: {} // 🔥 新機能: 空のオブジェクトで初期化
           };
           
-          console.log('テーマストアをv3に移行しました:', migratedState);
+          console.log('テーマストアをv4に移行しました:', migratedState);
           return migratedState;
         }
         return persistedState;

@@ -1,25 +1,74 @@
 /**
- * フローティングメニューコンポーネント
+ * フローティングメニューコンポーネント（テーマ機能修正版）
  * 
  * アプリケーションの設定や追加機能にアクセスするためのフローティングメニュー
- * テーマ切り替えやBGM再生、READMEへのアクセスなどの機能を提供します
+ * v1.6.1: 新しいテーマストアとの連携修正、背景テーマ機能を正しく動作させる
  */
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMoodStore } from '@/store/moodStore';
-import { useThemeStore } from '@/store/themeStore';
+import { useThemeStore } from '@/store/themeStore'; // 🔥 修正: 新しいテーマストア
 import { useBGMStore } from '@/store/bgmStore';
 import Link from 'next/link';
 import ReadmeContent from './ReadmeContent';
 
-// 利用可能な背景色
-const bgColorOptions = [
-  { name: 'デフォルト', value: '#ffffff' },
-  { name: '薄青', value: '#f0f8ff' },
-  { name: '薄緑', value: '#f0fff0' },
-  { name: '薄紫', value: '#f8f0ff' },
-  { name: '薄桃', value: '#fff0f5' },
+// 🔥 修正: 利用可能な背景テーマ（新しいテーマストア対応）
+const bgThemeOptions = [
+  { 
+    name: 'デフォルト（白）', 
+    theme: {
+      id: 'default_white',
+      name: 'デフォルト（白）',
+      type: 'solid' as const,
+      value: '#ffffff'
+    }
+  },
+  { 
+    name: 'ライトグレー', 
+    theme: {
+      id: 'default_light_gray',
+      name: 'ライトグレー',
+      type: 'solid' as const,
+      value: '#f8f9fa'
+    }
+  },
+  { 
+    name: 'ソフトブルー', 
+    theme: {
+      id: 'default_soft_blue',
+      name: 'ソフトブルー',
+      type: 'solid' as const,
+      value: '#f0f8ff'
+    }
+  },
+  { 
+    name: 'ウォームグレー', 
+    theme: {
+      id: 'default_warm_gray',
+      name: 'ウォームグレー',
+      type: 'solid' as const,
+      value: '#f5f5f5'
+    }
+  },
+  { 
+    name: 'ライトグリーン', 
+    theme: {
+      id: 'default_light_green',
+      name: 'ライトグリーン',
+      type: 'solid' as const,
+      value: '#f0fff0'
+    }
+  },
+  { 
+    name: 'ライトピンク', 
+    theme: {
+      id: 'default_light_pink',
+      name: 'ライトピンク',
+      type: 'solid' as const,
+      value: '#fff0f5'
+    }
+  }
 ];
 
 /**
@@ -29,7 +78,7 @@ const bgColorOptions = [
 export default function FloatingMenu() {
   // 各ストアから状態を取得
   const { mood, setMood } = useMoodStore();
-  const { bgColor, setBgColor } = useThemeStore();
+  const { backgroundTheme, setBackgroundTheme } = useThemeStore(); // 🔥 修正: 新しいテーマストア
   const bgmStore = useBGMStore();
   
   // メニューの表示状態
@@ -64,9 +113,10 @@ export default function FloatingMenu() {
     setMood(newMood);
   };
 
-  // 背景色の設定
-  const handleBgColorChange = (color: string) => {
-    setBgColor(color);
+  // 🔥 修正: 背景テーマの設定（新しいテーマストア対応）
+  const handleBgThemeChange = (selectedTheme: any) => {
+    console.log('フローティングメニュー: テーマ変更:', selectedTheme);
+    setBackgroundTheme(selectedTheme.theme);
   };
 
   // BGM再生/停止の切り替え
@@ -151,21 +201,42 @@ export default function FloatingMenu() {
                 </div>
               </div>
               
-              {/* 背景色設定 */}
+              {/* 🔥 修正: 背景テーマ設定（新しいテーマストア対応） */}
               <div className="mb-3">
-                <p className="text-sm text-gray-600 mb-1">背景色:</p>
-                <div className="flex flex-wrap gap-1">
-                  {bgColorOptions.map((option) => (
+                <p className="text-sm text-gray-600 mb-1">背景テーマ:</p>
+                <div className="text-xs text-gray-500 mb-2">
+                  現在: {backgroundTheme.name}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {bgThemeOptions.map((option) => (
                     <button
-                      key={option.value}
-                      onClick={() => handleBgColorChange(option.value)}
-                      className={`w-6 h-6 rounded-full border ${
-                        bgColor === option.value ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-300'
+                      key={option.theme.id}
+                      onClick={() => handleBgThemeChange(option)}
+                      className={`p-2 text-xs rounded border ${
+                        backgroundTheme.id === option.theme.id
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
-                      style={{ backgroundColor: option.value }}
-                      title={option.name}
-                    />
+                      style={{ backgroundColor: option.theme.value }}
+                    >
+                      <div 
+                        className="w-full h-4 rounded mb-1 border border-gray-200"
+                        style={{ backgroundColor: option.theme.value }}
+                      />
+                      <div className="text-center font-medium">
+                        {option.name}
+                      </div>
+                    </button>
                   ))}
+                </div>
+                
+                {/* 🔥 追加: ショップテーマへの案内 */}
+                <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
+                  <p className="text-xs text-purple-700 text-center">
+                    🛍️ <strong>さらに多くのテーマ</strong><br/>
+                    ショップタブで美しいグラデーション<br/>
+                    背景テーマを購入できます！
+                  </p>
                 </div>
               </div>
               
