@@ -87,17 +87,6 @@ export default function PointsDashboard() {
   };
 
   /**
-   * デバッグ用：ログインボーナス状態をリセット（開発時のみ）
-   */
-  const handleResetLoginBonus = () => {
-    if (user && process.env.NODE_ENV === 'development') {
-      loginBonusManager.resetUser(user.uid);
-      setLoginBonusChecked(false);
-      console.log("ログインボーナス状態をリセットしました（開発モード）");
-    }
-  };
-
-  /**
    * 連続ログイン日数に応じた絵文字を取得
    */
   const getStreakEmoji = (streak: number) => {
@@ -250,18 +239,6 @@ export default function PointsDashboard() {
           </p>
         </div>
       </div>
-
-      {/* 🔥 追加: 開発環境でのデバッグボタン */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mb-4 p-2 bg-gray-100 rounded">
-          <button
-            onClick={handleResetLoginBonus}
-            className="text-xs text-gray-600 hover:text-gray-800"
-          >
-            🔧 ログインボーナスリセット (dev)
-          </button>
-        </div>
-      )}
 
       {/* ポイント履歴 */}
       <AnimatePresence>

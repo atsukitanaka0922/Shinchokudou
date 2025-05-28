@@ -24,7 +24,7 @@ export interface BackgroundTheme {
 }
 
 /**
- * 🔥 追加: ユーザー別テーマ設定
+ * ユーザー別テーマ設定
  */
 interface UserThemeSettings {
   [userId: string]: {
@@ -41,8 +41,8 @@ interface ThemeState {
   // 基本設定
   bgColor: string;                    // レガシー: 単色背景
   backgroundTheme: BackgroundTheme;   // 新機能: 背景テーマ
-  currentUserId: string | null;       // 🔥 追加: 現在のユーザーID
-  userThemeSettings: UserThemeSettings; // 🔥 追加: ユーザー別設定
+  currentUserId: string | null;       // 現在のユーザーID
+  userThemeSettings: UserThemeSettings; // ユーザー別設定
   
   // アクション
   setBgColor: (color: string) => void;
@@ -50,7 +50,7 @@ interface ThemeState {
   applyThemeToDOM: () => void;  // DOM要素に直接適用
   resetToDefault: () => void;   // デフォルトテーマに戻す
   
-  // 🔥 追加: アカウント管理
+  // アカウント管理
   switchUser: (userId: string | null) => void; // ユーザー切り替え
   clearUserData: (userId: string) => void;     // ユーザーデータクリア
   
@@ -59,7 +59,14 @@ interface ThemeState {
   isUsingGradient: () => boolean;
   getPurchasedThemes: () => BackgroundTheme[];
   addPurchasedTheme: (themeId: string) => void; // ショップ連携用
-  hasPurchasedTheme: (themeId: string) => boolean; // 🔥 追加: 購入済みチェック
+  hasPurchasedTheme: (themeId: string) => boolean; // 購入済みチェック
+  
+  // 🔥 v1.6.1 新機能
+  forceApplyTheme: () => void;  // 強制適用（トラブル時用）
+  
+  // ヘルパー関数
+  isLightBackground: (value: string) => boolean;
+  isLightColor: (hex: string) => boolean;
 }
 
 /**
@@ -175,8 +182,8 @@ export const useThemeStore = create<ThemeState>()(
       // デフォルト設定
       bgColor: "#ffffff",
       backgroundTheme: DEFAULT_BACKGROUNDS[0],
-      currentUserId: null, // 🔥 追加
-      userThemeSettings: {}, // 🔥 追加
+      currentUserId: null,
+      userThemeSettings: {},
       
       /**
        * レガシー: 背景色を設定（単色のみ）
@@ -190,7 +197,7 @@ export const useThemeStore = create<ThemeState>()(
           value: color
         };
         
-        // 🔥 修正: ユーザー別に設定を保存
+        // ユーザー別に設定を保存
         if (currentUserId) {
           set(state => ({
             bgColor: color,
@@ -216,13 +223,13 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 🔥 修正: 背景テーマを設定（ユーザー別対応）
+       * 🔥 修正: 背景テーマを設定（即座適用保証）
        */
       setBackgroundTheme: (theme) => {
         const { currentUserId } = get();
         console.log('テーマを設定:', theme, 'ユーザー:', currentUserId);
         
-        // 🔥 修正: ユーザー別に設定を保存
+        // ユーザー別に設定を保存
         if (currentUserId) {
           set(state => ({
             backgroundTheme: theme,
@@ -244,12 +251,14 @@ export const useThemeStore = create<ThemeState>()(
           });
         }
         
-        // DOM要素に即座に適用
-        get().applyThemeToDOM();
+        // 🔥 修正: 複数回の適用で確実に反映
+        setTimeout(() => get().applyThemeToDOM(), 0);
+        setTimeout(() => get().applyThemeToDOM(), 100);
+        setTimeout(() => get().applyThemeToDOM(), 300);
       },
       
       /**
-       * 🔥 新機能: ユーザー切り替え
+       * ユーザー切り替え
        */
       switchUser: (userId) => {
         console.log('ユーザー切り替え:', userId);
@@ -300,7 +309,7 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 🔥 新機能: 特定ユーザーのデータをクリア
+       * 特定ユーザーのデータをクリア
        */
       clearUserData: (userId) => {
         console.log('ユーザーデータをクリア:', userId);
@@ -327,30 +336,91 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * DOM要素に直接テーマを適用
+       * 🔥 強化: DOM要素に確実にテーマを適用
        */
       applyThemeToDOM: () => {
-        if (typeof window === 'undefined' || !document.body) return;
+        if (typeof window === 'undefined' || !document.body) {
+          console.warn('DOM環境が利用できません');
+          return;
+        }
         
         const { backgroundTheme } = get();
         
         console.log('DOM要素にテーマを適用:', backgroundTheme);
         
-        if (backgroundTheme.type === 'gradient') {
-          // グラデーション背景の場合
-          document.body.style.background = backgroundTheme.value;
-          document.body.style.backgroundColor = ''; // 単色背景をクリア
-          document.body.style.backgroundAttachment = 'fixed'; // スクロール時固定
-        } else {
-          // 単色背景の場合
-          document.body.style.backgroundColor = backgroundTheme.value;
-          document.body.style.background = ''; // グラデーションをクリア
-          document.body.style.backgroundAttachment = ''; // リセット
+        try {
+          if (backgroundTheme.type === 'gradient') {
+            // グラデーション背景の場合
+            document.body.style.background = backgroundTheme.value;
+            document.body.style.backgroundColor = '';
+            document.body.style.backgroundAttachment = 'fixed';
+            
+            // 🔥 追加: 確実に適用されるように追加のスタイル設定
+            document.documentElement.style.background = backgroundTheme.value;
+            document.documentElement.style.backgroundAttachment = 'fixed';
+          } else {
+            // 単色背景の場合
+            document.body.style.backgroundColor = backgroundTheme.value;
+            document.body.style.background = '';
+            document.body.style.backgroundAttachment = '';
+            
+            // 🔥 追加: 確実に適用されるように追加のスタイル設定
+            document.documentElement.style.backgroundColor = backgroundTheme.value;
+            document.documentElement.style.background = '';
+          }
+          
+          // 🔥 追加: メタテーマカラーも更新
+          const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeColorMeta) {
+            const themeColor = backgroundTheme.type === 'solid' ? backgroundTheme.value : '#3B82F6';
+            themeColorMeta.setAttribute('content', themeColor);
+          }
+          
+          // 🔥 追加: CSS変数でも設定（将来の拡張用）
+          document.documentElement.style.setProperty('--app-bg-color', backgroundTheme.value);
+          
+          // コンテンツの可読性を保つため、明るい背景では文字色を調整
+          const isLightBackground = get().isLightBackground(backgroundTheme.value);
+          document.body.classList.toggle('dark-theme', !isLightBackground);
+          
+          console.log('✅ テーマ適用完了:', backgroundTheme.value);
+          
+        } catch (error) {
+          console.error('❌ テーマ適用エラー:', error);
         }
+      },
+      
+      /**
+       * 🔥 新機能: テーマの強制適用（トラブル時用）
+       */
+      forceApplyTheme: () => {
+        const { backgroundTheme } = get();
         
-        // コンテンツの可読性を保つため、明るい背景では文字色を調整
-        const isLightBackground = get().isLightBackground(backgroundTheme.value);
-        document.body.classList.toggle('dark-theme', !isLightBackground);
+        if (typeof window === 'undefined' || !document.body) return;
+        
+        console.log('🔧 テーマを強制適用:', backgroundTheme);
+        
+        // すべての可能な要素にスタイルを適用
+        const elements = [document.body, document.documentElement];
+        
+        elements.forEach(element => {
+          if (element) {
+            if (backgroundTheme.type === 'gradient') {
+              element.style.background = backgroundTheme.value;
+              element.style.backgroundColor = '';
+              element.style.backgroundAttachment = 'fixed';
+            } else {
+              element.style.backgroundColor = backgroundTheme.value;
+              element.style.background = '';
+              element.style.backgroundAttachment = '';
+            }
+          }
+        });
+        
+        // CSS変数でも設定
+        document.documentElement.style.setProperty('--app-bg-color', backgroundTheme.value);
+        
+        console.log('✅ 強制適用完了');
       },
       
       /**
@@ -401,7 +471,7 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 🔥 修正: 購入済みテーマのリストを取得（ユーザー別）
+       * 購入済みテーマのリストを取得（ユーザー別）
        */
       getPurchasedThemes: () => {
         const { currentUserId, userThemeSettings } = get();
@@ -416,7 +486,7 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 🔥 修正: ショップ連携 - テーマを購入済みに設定（ユーザー別）
+       * ショップ連携 - テーマを購入済みに設定（ユーザー別）
        */
       addPurchasedTheme: (themeId) => {
         const { currentUserId } = get();
@@ -453,7 +523,7 @@ export const useThemeStore = create<ThemeState>()(
       },
       
       /**
-       * 🔥 新機能: テーマを購入済みかチェック（ユーザー別）
+       * テーマを購入済みかチェック（ユーザー別）
        */
       hasPurchasedTheme: (themeId) => {
         const { currentUserId, userThemeSettings } = get();
@@ -493,9 +563,9 @@ export const useThemeStore = create<ThemeState>()(
     }),
     { 
       name: "theme-storage",
-      version: 4, // 🔥 v1.6.1でバージョンアップ
+      version: 5, // 🔥 v1.6.1でバージョンアップ
       migrate: (persistedState: any, version: number) => {
-        if (version < 4) {
+        if (version < 5) {
           // 旧バージョンからの移行
           const migratedState = {
             bgColor: persistedState.bgColor || '#ffffff',
@@ -505,11 +575,11 @@ export const useThemeStore = create<ThemeState>()(
               type: 'solid',
               value: persistedState.bgColor || '#ffffff'
             },
-            currentUserId: null, // 🔥 新機能: 初期値はnull
-            userThemeSettings: {} // 🔥 新機能: 空のオブジェクトで初期化
+            currentUserId: persistedState.currentUserId || null,
+            userThemeSettings: persistedState.userThemeSettings || {}
           };
           
-          console.log('テーマストアをv4に移行しました:', migratedState);
+          console.log('テーマストアをv5に移行しました:', migratedState);
           return migratedState;
         }
         return persistedState;
@@ -518,19 +588,33 @@ export const useThemeStore = create<ThemeState>()(
   )
 );
 
-// 🔥 新機能: ストア初期化時にテーマを自動適用
+// 🔥 強化: ストア初期化時とページ表示時にテーマを確実に適用
 if (typeof window !== 'undefined') {
-  // ページ読み込み完了後にテーマを適用
   const applyInitialTheme = () => {
     const themeStore = useThemeStore.getState();
-    console.log('初期テーマを適用中...');
+    console.log('🎨 初期テーマを適用中...');
     themeStore.applyThemeToDOM();
+    
+    // 🔥 追加: 500ms後にも再適用（確実に反映させる）
+    setTimeout(() => {
+      themeStore.applyThemeToDOM();
+    }, 500);
   };
   
+  // ページ読み込み時
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyInitialTheme);
   } else {
-    // 既に読み込み完了している場合は即座に実行
     setTimeout(applyInitialTheme, 100);
   }
+  
+  // 🔥 追加: ページが表示された時にも適用（visibilitychange対応）
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      setTimeout(() => {
+        const themeStore = useThemeStore.getState();
+        themeStore.applyThemeToDOM();
+      }, 100);
+    }
+  });
 }

@@ -1,19 +1,17 @@
 /**
- * フローティングメニューコンポーネント（テーマ機能修正版）
+ * フローティングメニューコンポーネント（レイアウト修正版）
  * 
- * アプリケーションの設定や追加機能にアクセスするためのフローティングメニュー
- * v1.6.1: 新しいテーマストアとの連携修正、背景テーマ機能を正しく動作させる
+ * v1.6.1: はみ出し問題の修正、背景テーマ適用の修正
  */
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMoodStore } from '@/store/moodStore';
-import { useThemeStore } from '@/store/themeStore'; // 🔥 修正: 新しいテーマストア
+import { useThemeStore } from '@/store/themeStore';
 import { useBGMStore } from '@/store/bgmStore';
-import Link from 'next/link';
 import ReadmeContent from './ReadmeContent';
 
-// 🔥 修正: 利用可能な背景テーマ（新しいテーマストア対応）
+// 🔥 修正: 利用可能な背景テーマ（購入不要の無料テーマ）
 const bgThemeOptions = [
   { 
     name: 'デフォルト（白）', 
@@ -73,12 +71,11 @@ const bgThemeOptions = [
 
 /**
  * フローティングメニューコンポーネント
- * 設定や追加機能へのアクセスを提供
  */
 export default function FloatingMenu() {
   // 各ストアから状態を取得
   const { mood, setMood } = useMoodStore();
-  const { backgroundTheme, setBackgroundTheme } = useThemeStore(); // 🔥 修正: 新しいテーマストア
+  const { backgroundTheme, setBackgroundTheme, applyThemeToDOM } = useThemeStore();
   const bgmStore = useBGMStore();
   
   // メニューの表示状態
@@ -93,11 +90,8 @@ export default function FloatingMenu() {
 
   // BGMの初期化と状態同期
   useEffect(() => {
-    // BGMストアが利用可能な場合のみ初期化を実行
     if (bgmStore && typeof bgmStore.initialize === 'function') {
       bgmStore.initialize();
-      
-      // BGMストアの状態を同期
       setIsPlaying(bgmStore.isPlaying);
       setVolume(bgmStore.volume);
     }
@@ -113,10 +107,31 @@ export default function FloatingMenu() {
     setMood(newMood);
   };
 
-  // 🔥 修正: 背景テーマの設定（新しいテーマストア対応）
+  // 🔥 修正: 背景テーマの設定と即座適用
   const handleBgThemeChange = (selectedTheme: any) => {
-    console.log('フローティングメニュー: テーマ変更:', selectedTheme);
-    setBackgroundTheme(selectedTheme.theme);
+    console.log('フローティングメニュー: テーマ変更:', selectedTheme.theme);
+    
+    try {
+      // テーマを設定
+      setBackgroundTheme(selectedTheme.theme);
+      
+      // 🔥 追加: 手動でDOMに適用（確実に反映させる）
+      setTimeout(() => {
+        if (typeof applyThemeToDOM === 'function') {
+          applyThemeToDOM();
+        } else {
+          // フォールバック: 直接DOMを操作
+          if (document.body) {
+            document.body.style.backgroundColor = selectedTheme.theme.value;
+            document.body.style.background = '';
+            console.log('フォールバック: 直接DOM操作でテーマ適用:', selectedTheme.theme.value);
+          }
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('テーマ変更エラー:', error);
+    }
   };
 
   // BGM再生/停止の切り替え
@@ -139,7 +154,6 @@ export default function FloatingMenu() {
   // READMEモーダルの表示切り替え
   const toggleReadme = () => {
     setShowReadme(!showReadme);
-    // READMEを開く場合はメインメニューを閉じる
     if (!showReadme) {
       setIsOpen(false);
     }
@@ -147,6 +161,7 @@ export default function FloatingMenu() {
 
   return (
     <>
+      {/* 🔥 修正: フローティングメニューの配置を調整 */}
       <div className="fixed bottom-4 right-4 z-40">
         {/* メインメニューボタン */}
         <motion.button
@@ -158,15 +173,20 @@ export default function FloatingMenu() {
           <span className="text-xl">{isOpen ? '✕' : '⚙️'}</span>
         </motion.button>
 
-        {/* メニューパネル */}
+        {/* 🔥 修正: メニューパネルの配置とサイズを調整 */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl p-4 w-60"
+              className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl p-4 w-72 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto"
               initial={{ opacity: 0, scale: 0.8, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 10 }}
               transition={{ type: 'spring', damping: 20 }}
+              style={{
+                // 🔥 追加: 画面からはみ出さないように調整
+                transform: 'translateX(calc(-100% + 3rem))',
+                transformOrigin: 'bottom right'
+              }}
             >
               <h3 className="font-bold text-gray-700 mb-3">設定</h3>
               
@@ -189,7 +209,7 @@ export default function FloatingMenu() {
                     <button
                       key={moodOption}
                       onClick={() => handleMoodChange(moodOption as any)}
-                      className={`px-2 py-1 text-xs rounded-md ${
+                      className={`px-2 py-1 text-xs rounded-md flex-1 ${
                         mood === moodOption
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-200 text-gray-700'
@@ -201,36 +221,40 @@ export default function FloatingMenu() {
                 </div>
               </div>
               
-              {/* 🔥 修正: 背景テーマ設定（新しいテーマストア対応） */}
+              {/* 🔥 修正: 背景テーマ設定の表示を改善 */}
               <div className="mb-3">
                 <p className="text-sm text-gray-600 mb-1">背景テーマ:</p>
-                <div className="text-xs text-gray-500 mb-2">
-                  現在: {backgroundTheme.name}
+                <div className="text-xs text-gray-500 mb-2 p-2 bg-gray-50 rounded">
+                  現在: <span className="font-medium">{backgroundTheme.name}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-1">
+                
+                {/* 🔥 修正: グリッドレイアウトを3列に変更してコンパクトに */}
+                <div className="grid grid-cols-3 gap-1 text-xs">
                   {bgThemeOptions.map((option) => (
                     <button
                       key={option.theme.id}
                       onClick={() => handleBgThemeChange(option)}
-                      className={`p-2 text-xs rounded border ${
+                      className={`p-1 rounded border text-center ${
                         backgroundTheme.id === option.theme.id
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-300'
                           : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
-                      style={{ backgroundColor: option.theme.value }}
+                      title={option.name} // ツールチップ表示
                     >
+                      {/* プレビュー色 */}
                       <div 
-                        className="w-full h-4 rounded mb-1 border border-gray-200"
+                        className="w-full h-3 rounded mb-1 border border-gray-200"
                         style={{ backgroundColor: option.theme.value }}
                       />
-                      <div className="text-center font-medium">
-                        {option.name}
+                      {/* 短縮名 */}
+                      <div className="font-medium leading-tight">
+                        {option.name.replace(/[（）]/g, '').substring(0, 4)}
                       </div>
                     </button>
                   ))}
                 </div>
                 
-                {/* 🔥 追加: ショップテーマへの案内 */}
+                {/* ショップテーマへの案内 */}
                 <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
                   <p className="text-xs text-purple-700 text-center">
                     🛍️ <strong>さらに多くのテーマ</strong><br/>
@@ -269,6 +293,16 @@ export default function FloatingMenu() {
                   <span className="text-xs text-gray-500 ml-2">🔊</span>
                 </div>
               </div>
+              
+              {/* 🔥 追加: デバッグ情報（開発時のみ） */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="text-xs text-yellow-700">
+                    <strong>Debug:</strong> {backgroundTheme.id}<br/>
+                    Value: {backgroundTheme.value}
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -289,7 +323,6 @@ export default function FloatingMenu() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
             >
-              {/* 閉じるボタン */}
               <button
                 onClick={toggleReadme}
                 className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
@@ -298,7 +331,6 @@ export default function FloatingMenu() {
                 <span className="text-xl">✕</span>
               </button>
               
-              {/* スクロール可能なコンテンツエリア */}
               <div className="p-6 pt-8">
                 <ReadmeContent />
               </div>
