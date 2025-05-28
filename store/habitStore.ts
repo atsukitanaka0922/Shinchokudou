@@ -1,8 +1,9 @@
 /**
- * 習慣管理ストア
+ * 習慣管理ストア（エラーハンドリング強化版）
  * 
  * 習慣の作成、更新、完了管理、統計計算を提供するZustandストア
- * v1.6.1: 習慣タスク機能の実装
+ * Firebase権限エラーの詳細なハンドリングを追加
+ * v1.6.0: 習慣タスク機能の実装 + エラーハンドリング強化
  */
 
 import { create } from "zustand";
@@ -38,6 +39,7 @@ import {
 interface HabitState {
   habits: Habit[];
   loading: boolean;
+  error: string | null;
   unsubscribe: (() => void) | null;
   
   // データ管理
@@ -63,6 +65,7 @@ interface HabitState {
   
   // ユーティリティ
   clearHabits: () => void;
+  clearError: () => void;
 }
 
 /**
@@ -71,12 +74,47 @@ interface HabitState {
 const HABIT_COMPLETION_POINTS = 8;
 
 /**
- * 習慣管理Zustandストア
+ * Firebaseエラーメッセージを日本語に変換
+ */
+const translateFirebaseError = (error: any): string => {
+  const code = error?.code || error?.message || '';
+  
+  switch (code) {
+    case 'permission-denied':
+    case 'Missing or insufficient permissions':
+      return '権限エラー: 習慣データへのアクセス権限がありません。アプリを再読み込みしてください。';
+    case 'not-found':
+      return '指定された習慣が見つかりません。';
+    case 'already-exists':
+      return '同じ名前の習慣が既に存在します。';
+    case 'invalid-argument':
+      return '入力データが無効です。フォームの内容を確認してください。';
+    case 'unauthenticated':
+      return 'ログインが必要です。再度ログインしてください。';
+    case 'resource-exhausted':
+      return 'サーバーが混雑しています。少し時間をおいて再試行してください。';
+    case 'unavailable':
+      return 'サービスが一時的に利用できません。ネットワーク接続を確認してください。';
+    default:
+      return `習慣操作エラー: ${error?.message || '不明なエラーが発生しました'}`;
+  }
+};
+
+/**
+ * 習慣管理Zustandストア（強化版）
  */
 export const useHabitStore = create<HabitState>((set, get) => ({
   habits: [],
   loading: true,
+  error: null,
   unsubscribe: null,
+
+  /**
+   * エラーをクリア
+   */
+  clearError: () => {
+    set({ error: null });
+  },
 
   /**
    * ユーザーの習慣をFirestoreからリアルタイムで監視・読み込み
@@ -92,33 +130,47 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     
     if (!user) {
       console.log("ユーザーがログインしていないため、習慣を取得できません");
-      set({ habits: [], loading: false, unsubscribe: null });
+      set({ habits: [], loading: false, unsubscribe: null, error: null });
       return;
     }
     
-    set({ loading: true });
+    set({ loading: true, error: null });
     
     try {
       console.log(`Firestoreからユーザー ${user.uid} の習慣を監視開始`);
-      const q = query(collection(db, "habits"), where("userId", "==", user.uid));
+      
+      // クエリを作成
+      const q = query(
+        collection(db, "habits"), 
+        where("userId", "==", user.uid)
+      );
       
       // リアルタイムリスナーを設定
       const unsubscribeListener = onSnapshot(q, 
         (snapshot) => {
-          const habits = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Habit[];
-          
-          console.log("Firestoreから習慣取得成功:", habits.length, "件");
-          set({ habits, loading: false });
+          try {
+            const habits = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data()
+            })) as Habit[];
+            
+            console.log("Firestoreから習慣取得成功:", habits.length, "件");
+            set({ habits, loading: false, error: null });
+          } catch (parseError) {
+            console.error("習慣データの解析エラー:", parseError);
+            set({ 
+              loading: false, 
+              error: "習慣データの読み込み中にエラーが発生しました。" 
+            });
+          }
         },
         (error) => {
           console.error("Firestoreの習慣監視エラー:", error);
-          set({ loading: false });
+          const errorMessage = translateFirebaseError(error);
+          set({ loading: false, error: errorMessage });
           
           const feedbackStore = useFeedbackStore.getState();
-          feedbackStore.setMessage("習慣の読み込みに失敗しました");
+          feedbackStore.setMessage(errorMessage);
         }
       );
       
@@ -126,7 +178,11 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       
     } catch (error) {
       console.error("習慣監視の設定に失敗:", error);
-      set({ loading: false });
+      const errorMessage = translateFirebaseError(error);
+      set({ loading: false, error: errorMessage });
+      
+      const feedbackStore = useFeedbackStore.getState();
+      feedbackStore.setMessage(errorMessage);
     }
   },
 
@@ -135,28 +191,50 @@ export const useHabitStore = create<HabitState>((set, get) => ({
    */
   addHabit: async (habitData) => {
     const user = useAuthStore.getState().user;
-    if (!user) throw new Error("ユーザーがログインしていません");
+    if (!user) {
+      throw new Error("ユーザーがログインしていません");
+    }
+
+    // データ検証
+    if (!habitData.title || habitData.title.trim().length === 0) {
+      throw new Error("習慣名は必須です");
+    }
+
+    if (!['daily', 'weekly', 'monthly'].includes(habitData.frequency)) {
+      throw new Error("無効な頻度が指定されました");
+    }
 
     const newHabit: Omit<Habit, 'id'> = {
       ...habitData,
       userId: user.uid,
       createdAt: Date.now(),
-      completionHistory: []
+      completionHistory: [],
+      // デフォルト値の設定
+      description: habitData.description || '',
+      targetDays: habitData.targetDays || [],
+      reminderTime: habitData.reminderTime || '20:00',
+      isActive: habitData.isActive !== undefined ? habitData.isActive : true
     };
 
     try {
+      console.log("新しい習慣を追加中:", newHabit);
+      
       const docRef = await addDoc(collection(db, "habits"), newHabit);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage(`習慣「${habitData.title}」を追加しました`);
+      feedbackStore.setMessage(`🎉 習慣「${habitData.title}」を追加しました`);
       
+      console.log("習慣追加成功:", docRef.id);
       return docRef.id;
     } catch (error) {
       console.error("習慣追加エラー:", error);
+      const errorMessage = translateFirebaseError(error);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage("習慣の追加に失敗しました");
-      throw error;
+      feedbackStore.setMessage(errorMessage);
+      
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 
@@ -164,21 +242,33 @@ export const useHabitStore = create<HabitState>((set, get) => ({
    * 習慣を更新
    */
   updateHabit: async (habitId, updates) => {
+    if (!habitId) {
+      throw new Error("習慣IDが指定されていません");
+    }
+
     try {
       const updateData = {
         ...updates,
         updatedAt: Date.now()
       };
       
+      console.log("習慣を更新中:", habitId, updateData);
+      
       await updateDoc(doc(db, "habits", habitId), updateData);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage("習慣を更新しました");
+      feedbackStore.setMessage("✅ 習慣を更新しました");
+      
+      console.log("習慣更新成功:", habitId);
     } catch (error) {
       console.error("習慣更新エラー:", error);
+      const errorMessage = translateFirebaseError(error);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage("習慣の更新に失敗しました");
+      feedbackStore.setMessage(errorMessage);
+      
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 
@@ -186,19 +276,33 @@ export const useHabitStore = create<HabitState>((set, get) => ({
    * 習慣を削除
    */
   removeHabit: async (habitId) => {
+    if (!habitId) {
+      throw new Error("習慣IDが指定されていません");
+    }
+
     const habit = get().habits.find(h => h.id === habitId);
-    if (!habit) return;
+    if (!habit) {
+      throw new Error("指定された習慣が見つかりません");
+    }
     
     try {
+      console.log("習慣を削除中:", habitId);
+      
       await deleteDoc(doc(db, "habits", habitId));
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage(`習慣「${habit.title}」を削除しました`);
+      feedbackStore.setMessage(`🗑️ 習慣「${habit.title}」を削除しました`);
+      
+      console.log("習慣削除成功:", habitId);
     } catch (error) {
       console.error("習慣削除エラー:", error);
+      const errorMessage = translateFirebaseError(error);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage("習慣の削除に失敗しました");
+      feedbackStore.setMessage(errorMessage);
+      
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 
@@ -207,17 +311,24 @@ export const useHabitStore = create<HabitState>((set, get) => ({
    */
   toggleHabitCompletion: async (habitId, date) => {
     const habit = get().habits.find(h => h.id === habitId);
-    if (!habit) return;
+    if (!habit) {
+      throw new Error("指定された習慣が見つかりません");
+    }
     
     const targetDate = date || new Date().toISOString().split('T')[0];
     const existingCompletion = habit.completionHistory.find(
       completion => completion.date === targetDate
     );
     
-    if (existingCompletion?.completed) {
-      await get().markHabitIncomplete(habitId, targetDate);
-    } else {
-      await get().markHabitComplete(habitId, targetDate);
+    try {
+      if (existingCompletion?.completed) {
+        await get().markHabitIncomplete(habitId, targetDate);
+      } else {
+        await get().markHabitComplete(habitId, targetDate);
+      }
+    } catch (error) {
+      console.error("習慣完了状態切り替えエラー:", error);
+      throw error;
     }
   },
 
@@ -226,7 +337,9 @@ export const useHabitStore = create<HabitState>((set, get) => ({
    */
   markHabitComplete: async (habitId, date) => {
     const habit = get().habits.find(h => h.id === habitId);
-    if (!habit) return;
+    if (!habit) {
+      throw new Error("指定された習慣が見つかりません");
+    }
     
     const targetDate = date || new Date().toISOString().split('T')[0];
     const completionRecord: HabitCompletion = {
@@ -236,6 +349,8 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     };
     
     try {
+      console.log("習慣完了をマーク中:", habitId, targetDate);
+      
       // 既存の同日の記録を削除してから新しい記録を追加
       const updatedHistory = habit.completionHistory.filter(
         completion => completion.date !== targetDate
@@ -258,11 +373,17 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       const feedbackStore = useFeedbackStore.getState();
       feedbackStore.setMessage(`🎉 習慣「${habit.title}」完了！ +${HABIT_COMPLETION_POINTS}ポイント`);
       
+      console.log("習慣完了マーク成功:", habitId);
+      
     } catch (error) {
       console.error("習慣完了エラー:", error);
+      const errorMessage = translateFirebaseError(error);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage("習慣の完了記録に失敗しました");
+      feedbackStore.setMessage(errorMessage);
+      
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 
@@ -271,11 +392,15 @@ export const useHabitStore = create<HabitState>((set, get) => ({
    */
   markHabitIncomplete: async (habitId, date) => {
     const habit = get().habits.find(h => h.id === habitId);
-    if (!habit) return;
+    if (!habit) {
+      throw new Error("指定された習慣が見つかりません");
+    }
     
     const targetDate = date || new Date().toISOString().split('T')[0];
     
     try {
+      console.log("習慣完了を取り消し中:", habitId, targetDate);
+      
       // 該当日の完了記録を削除
       const updatedHistory = habit.completionHistory.filter(
         completion => completion.date !== targetDate
@@ -298,11 +423,17 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       const feedbackStore = useFeedbackStore.getState();
       feedbackStore.setMessage(`📤 習慣完了を取り消しました。${HABIT_COMPLETION_POINTS}ポイント減算`);
       
+      console.log("習慣完了取り消し成功:", habitId);
+      
     } catch (error) {
       console.error("習慣完了取り消しエラー:", error);
+      const errorMessage = translateFirebaseError(error);
       
       const feedbackStore = useFeedbackStore.getState();
-      feedbackStore.setMessage("習慣の完了取り消しに失敗しました");
+      feedbackStore.setMessage(errorMessage);
+      
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 
@@ -409,6 +540,6 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       unsubscribe();
     }
     
-    set({ habits: [], unsubscribe: null });
+    set({ habits: [], unsubscribe: null, error: null });
   }
 }));

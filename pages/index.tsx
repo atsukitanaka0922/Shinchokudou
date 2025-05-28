@@ -1,9 +1,9 @@
 /**
- * ホームページ (ルート) コンポーネント（ショップタブ追加版）
+ * ホームページ (ルート) コンポーネント（習慣管理タブ追加版）
  * 
  * アプリケーションのメインビューを提供
  * レスポンシブデザインに対応し、モバイルとデスクトップで最適なUIを表示
- * v1.6.0: ショップタブとテーマ適用機能を追加
+ * v1.6.0: 習慣管理タブと AI習慣提案機能を追加
  */
 
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ import { usePointStore } from "@/store/pointStore";
 import { useGameCenterStore } from "@/store/gameCenterStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useShopStore } from "@/store/shopStore";
+import { useHabitStore } from "@/store/habitStore";
 import { useAuthStore } from "@/store/auth";
 import { useDevice } from "@/hooks/useDevice";
 import Head from "next/head";
@@ -34,6 +35,8 @@ import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
 import GameCenter from "@/components/GameCenter";
 import Shop from "@/components/Shop";
+import HabitManager from "@/components/HabitManager";
+import HabitWarning from "@/components/HabitWarning";
 
 // window.workboxのための型拡張
 declare global {
@@ -51,12 +54,13 @@ export default function Home() {
   const { loadUserPoints, checkAndAwardLoginBonus } = usePointStore();
   const { loadGameHistory, loadGameStats } = useGameCenterStore();
   const { loadShopItems, loadUserPurchases } = useShopStore();
+  const { loadHabits } = useHabitStore();
   const { getActiveBackground, isUsingGradient } = useThemeStore();
   const { user } = useAuthStore();
   const isMobile = useDevice();
   const [mounted, setMounted] = useState(false);
   const [dataInitialized, setDataInitialized] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'tasks' | 'games' | 'shop'>('tasks');
+  const [currentTab, setCurrentTab] = useState<'tasks' | 'habits' | 'games' | 'shop'>('tasks');
 
   // クライアントサイドのみの処理を確認するためのマウント状態
   useEffect(() => {
@@ -78,9 +82,12 @@ export default function Home() {
           await loadGameHistory();
           await loadGameStats();
           
-          // 🔥 新機能: ショップデータをロード
+          // ショップデータをロード
           await loadShopItems();
           await loadUserPurchases();
+          
+          // 🔥 新機能: 習慣データをロード
+          await loadHabits();
           
           setDataInitialized(true);
           console.log("データ初期化完了", { user: user.uid });
@@ -98,9 +105,9 @@ export default function Home() {
         setDataInitialized(false);
       }
     };
-  }, [user, dataInitialized, loadTasks, loadUserPoints, loadGameHistory, loadGameStats, loadShopItems, loadUserPurchases]);
+  }, [user, dataInitialized, loadTasks, loadUserPoints, loadGameHistory, loadGameStats, loadShopItems, loadUserPurchases, loadHabits]);
 
-  // 🔥 新機能: テーマの動的適用
+  // テーマの動的適用
   useEffect(() => {
     if (document) {
       const activeBackground = getActiveBackground();
@@ -166,6 +173,7 @@ export default function Home() {
         {/* 共通コンポーネント */}
         <Feedback />
         <DeadlineWarning />
+        <HabitWarning />
         <FloatingMenu />
         <FloatingPomodoroTimer />
 
@@ -186,21 +194,31 @@ export default function Home() {
                 
                 <AuthButton />
                 
-                {/* 🔥 更新: タブナビゲーションにショップを追加 */}
+                {/* 🔥 更新: タブナビゲーションに習慣管理を追加 */}
                 <div className="flex mb-4 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setCurrentTab('tasks')}
-                    className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
                       currentTab === 'tasks'
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-800'
                     }`}
                   >
-                    📋 タスク管理
+                    📋 タスク
+                  </button>
+                  <button
+                    onClick={() => setCurrentTab('habits')}
+                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
+                      currentTab === 'habits'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    🔄 習慣
                   </button>
                   <button
                     onClick={() => setCurrentTab('games')}
-                    className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
                       currentTab === 'games'
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-800'
@@ -210,7 +228,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => setCurrentTab('shop')}
-                    className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
                       currentTab === 'shop'
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-800'
@@ -232,13 +250,19 @@ export default function Home() {
                       <EnhancedAddTask />
                       <EnhancedTaskList />
                     </>
+                  ) : currentTab === 'habits' ? (
+                    // 🔥 新機能: 習慣管理タブ
+                    <>
+                      <PointsDashboard />
+                      <HabitManager />
+                    </>
                   ) : currentTab === 'games' ? (
                     <>
                       <PointsDashboard />
                       <GameCenter />
                     </>
                   ) : (
-                    // 🔥 新機能: ショップタブ
+                    // ショップタブ
                     <>
                       <PointsDashboard />
                       <Shop />
@@ -256,13 +280,13 @@ export default function Home() {
                       <AppLogo width={100} height={100} className="mr-4" />
                       <div>
                         <h1 className="text-3xl font-bold">進捗堂</h1>
-                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.6.0</p>
+                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.6.1</p>
                       </div>
                     </div>
                     <AuthButton />
                   </div>
                   
-                  {/* 🔥 更新: タブナビゲーションにショップを追加 */}
+                  {/* 🔥 更新: タブナビゲーションに習慣管理を追加 */}
                   <div className="flex mt-6 space-x-1">
                     <button
                       onClick={() => setCurrentTab('tasks')}
@@ -273,6 +297,16 @@ export default function Home() {
                       }`}
                     >
                       📋 タスク管理
+                    </button>
+                    <button
+                      onClick={() => setCurrentTab('habits')}
+                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                        currentTab === 'habits'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      🔄 習慣管理
                     </button>
                     <button
                       onClick={() => setCurrentTab('games')}
@@ -361,6 +395,22 @@ export default function Home() {
                       <NewFeaturesCard />
                     </div>
                   </div>
+                ) : currentTab === 'habits' ? (
+                  // 🔥 新機能: 習慣管理タブ
+                  <div className="grid grid-cols-12 gap-6 mb-20">
+                    <div className="col-span-12 md:col-span-12">
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <HabitManager />
+                      </motion.div>
+                    </div>
+                    
+                    <div className="col-span-12 md:col-span-4 space-y-6">
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <PointsDashboard />
+                      </motion.div>
+                      <HabitGuide />
+                    </div>
+                  </div>
                 ) : currentTab === 'games' ? (
                   // ゲームセンタータブ
                   <div className="grid grid-cols-12 gap-6 mb-20">
@@ -378,7 +428,7 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  // 🔥 新機能: ショップタブ
+                  // ショップタブ
                   <div className="grid grid-cols-12 gap-6 mb-20">
                     <div className="col-span-12 md:col-span-8">
                       <motion.div className="p-6 rounded-lg shadow-lg bg-white">
@@ -468,7 +518,7 @@ function NewFeaturesCard() {
       transition={{ delay: 1.2 }}
     >
       <div className="flex justify-between items-start">
-        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 v1.6.0 新機能！</h2>
+        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 v1.6.1 新機能！</h2>
         <button
           onClick={() => setShowFeatures(false)}
           className="text-purple-500 hover:text-purple-700"
@@ -480,26 +530,26 @@ function NewFeaturesCard() {
       
       <div className="space-y-2 text-sm text-purple-700">
         <div className="flex items-center">
-          <span className="mr-2">🛍️</span>
-          <span>ポイントショップ新登場</span>
+          <span className="mr-2">🔄</span>
+          <span>習慣管理機能追加</span>
         </div>
         <div className="flex items-center">
-          <span className="mr-2">🎨</span>
-          <span>グラデーション背景テーマ</span>
-        </div>
-        <div className="flex items-center">
-          <span className="mr-2">⏱️</span>
-          <span>フローティングポモドーロタイマー</span>
+          <span className="mr-2">🤖</span>
+          <span>AI習慣提案システム</span>
         </div>
         <div className="flex items-center">
           <span className="mr-2">📊</span>
-          <span>タスクソート機能強化</span>
+          <span>習慣統計・ストリーク機能</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">⏰</span>
+          <span>習慣リマインダー機能</span>
         </div>
       </div>
       
       <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
         <p className="text-xs text-purple-600">
-          <strong>v1.6.0の特徴:</strong> ポイントで購入した美しい背景テーマでアプリをカスタマイズ！ゲーム中でもポモドーロタイマーが継続し、生産性とリフレッシュの完璧なバランスを実現。
+          <strong>v1.6.1の特徴:</strong> 習慣完了でポイント獲得！継続的な良い習慣形成をサポートし、タスクと習慣の両方で生産性を最大化。
         </p>
       </div>
     </motion.div>
@@ -553,7 +603,7 @@ function GameCenterGuide() {
 }
 
 /**
- * 🔥 新機能: ショップガイドコンポーネント
+ * ショップガイドコンポーネント
  */
 function ShopGuide() {
   const [showGuide, setShowGuide] = useState(true);
@@ -598,6 +648,63 @@ function ShopGuide() {
         <div className="bg-white p-3 rounded-lg border border-pink-100">
           <p className="font-medium text-pink-800 mb-1">✨ 現在適用中</p>
           <p className="text-purple-700 font-medium">{backgroundTheme.name}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * 🔥 新機能: 習慣管理ガイドコンポーネント
+ */
+function HabitGuide() {
+  const [showGuide, setShowGuide] = useState(true);
+  const { habits } = useHabitStore();
+  
+  if (!showGuide) return null;
+  
+  return (
+    <motion.div 
+      className="p-6 rounded-lg shadow-lg bg-gradient-to-r from-indigo-50 to-cyan-50 border border-indigo-200"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.3 }}
+    >
+      <div className="flex justify-between items-start">
+        <h2 className="text-lg font-bold text-indigo-800 mb-3">🔄 習慣管理ガイド</h2>
+        <button
+          onClick={() => setShowGuide(false)}
+          className="text-indigo-500 hover:text-indigo-700"
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+      </div>
+      
+      <div className="space-y-3 text-sm text-indigo-700">
+        <div className="bg-white p-3 rounded-lg border border-indigo-100">
+          <p className="font-medium text-indigo-800 mb-1">🎯 習慣の力</p>
+          <p>小さな習慣の積み重ねが大きな変化を生み出します。毎日の継続を大切にしましょう。</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-indigo-100">
+          <p className="font-medium text-indigo-800 mb-1">💰 ポイント獲得</p>
+          <p>習慣完了で8ポイント獲得！タスクと合わせて効率的にポイントを貯められます。</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-indigo-100">
+          <p className="font-medium text-indigo-800 mb-1">🤖 AI提案システム</p>
+          <p>あなたの行動パターンと天気を分析し、最適な習慣を提案します。</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-indigo-100">
+          <p className="font-medium text-indigo-800 mb-1">⏰ 習慣リマインダー</p>
+          <p>20時頃に未完了の習慣をお知らせ。継続をサポートします。</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-indigo-100">
+          <p className="font-medium text-indigo-800 mb-1">📊 現在の習慣数</p>
+          <p className="text-cyan-700 font-medium">{habits.length}個の習慣を管理中</p>
         </div>
       </div>
     </motion.div>
