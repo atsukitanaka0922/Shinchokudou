@@ -1,9 +1,9 @@
 /**
- * ホームページ (ルート) コンポーネント（ポモドーロタイマー統一版）
+ * ホームページ (ルート) コンポーネント（ショップタブ追加版）
  * 
  * アプリケーションのメインビューを提供
  * レスポンシブデザインに対応し、モバイルとデスクトップで最適なUIを表示
- * v1.6.0: フローティングポモドーロタイマーに統一
+ * v1.6.0: ショップタブとテーマ適用機能を追加
  */
 
 import { useEffect, useState } from "react";
@@ -12,6 +12,7 @@ import { useEnhancedTaskStore } from "@/store/enhancedTaskStore";
 import { usePointStore } from "@/store/pointStore";
 import { useGameCenterStore } from "@/store/gameCenterStore";
 import { useThemeStore } from "@/store/themeStore";
+import { useShopStore } from "@/store/shopStore";
 import { useAuthStore } from "@/store/auth";
 import { useDevice } from "@/hooks/useDevice";
 import Head from "next/head";
@@ -27,11 +28,12 @@ import Dashboard from "@/components/Dashboard";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import Feedback from "@/components/Feedback";
 import FloatingMenu from "@/components/FloatingMenu";
-import FloatingPomodoroTimer from "@/components/FloatingPomodoroTimer"; // 🔥 統一されたタイマー
+import FloatingPomodoroTimer from "@/components/FloatingPomodoroTimer";
 import TaskStats from "@/components/TaskStats";
 import Weather from "@/components/Weather";
 import LoginRegister from "@/components/LoginRegister";
 import GameCenter from "@/components/GameCenter";
+import Shop from "@/components/Shop";
 
 // window.workboxのための型拡張
 declare global {
@@ -48,12 +50,13 @@ export default function Home() {
   const { loadTasks } = useEnhancedTaskStore();
   const { loadUserPoints, checkAndAwardLoginBonus } = usePointStore();
   const { loadGameHistory, loadGameStats } = useGameCenterStore();
-  const { bgColor } = useThemeStore();
-  const { user } = useAuthStore(); // 認証状態を取得
-  const isMobile = useDevice(); // デバイスタイプを判定
+  const { loadShopItems, loadUserPurchases } = useShopStore();
+  const { getActiveBackground, isUsingGradient } = useThemeStore();
+  const { user } = useAuthStore();
+  const isMobile = useDevice();
   const [mounted, setMounted] = useState(false);
-  const [dataInitialized, setDataInitialized] = useState(false); // 初期化フラグ
-  const [currentTab, setCurrentTab] = useState<'tasks' | 'games'>('tasks'); // タブ状態
+  const [dataInitialized, setDataInitialized] = useState(false);
+  const [currentTab, setCurrentTab] = useState<'tasks' | 'games' | 'shop'>('tasks');
 
   // クライアントサイドのみの処理を確認するためのマウント状態
   useEffect(() => {
@@ -67,7 +70,7 @@ export default function Home() {
       
       const initializeData = async () => {
         try {
-          // タスクとポイントデータをロード
+          // 基本データをロード
           await loadTasks();
           await loadUserPoints();
           
@@ -75,8 +78,9 @@ export default function Home() {
           await loadGameHistory();
           await loadGameStats();
           
-          // ログインボーナスはポイントダッシュボードで処理するため、ここでは実行しない
-          // await checkAndAwardLoginBonus();
+          // 🔥 新機能: ショップデータをロード
+          await loadShopItems();
+          await loadUserPurchases();
           
           setDataInitialized(true);
           console.log("データ初期化完了", { user: user.uid });
@@ -91,17 +95,27 @@ export default function Home() {
     // クリーンアップ関数
     return () => {
       if (!user) {
-        setDataInitialized(false); // ユーザーがログアウトした場合はリセット
+        setDataInitialized(false);
       }
     };
-  }, [user, dataInitialized, loadTasks, loadUserPoints, loadGameHistory, loadGameStats]);
+  }, [user, dataInitialized, loadTasks, loadUserPoints, loadGameHistory, loadGameStats, loadShopItems, loadUserPurchases]);
 
-  // テーマの適用
+  // 🔥 新機能: テーマの動的適用
   useEffect(() => {
     if (document) {
-      document.body.style.backgroundColor = bgColor;
+      const activeBackground = getActiveBackground();
+      
+      if (isUsingGradient()) {
+        // グラデーション背景の場合
+        document.body.style.background = activeBackground;
+        document.body.style.backgroundColor = ''; // フォールバック用に空にする
+      } else {
+        // 単色背景の場合
+        document.body.style.backgroundColor = activeBackground;
+        document.body.style.background = ''; // グラデーションを無効化
+      }
     }
-  }, [bgColor]);
+  }, [getActiveBackground, isUsingGradient]);
 
   // ServiceWorkerの登録
   useEffect(() => {
@@ -110,14 +124,12 @@ export default function Home() {
       "serviceWorker" in navigator &&
       window.workbox !== undefined
     ) {
-      // PWAが有効な場合はServiceWorkerを登録
       console.log("PWA対応: ServiceWorkerが有効です");
     }
   }, []);
 
   // サーバーサイドレンダリング時はマウント状態を確認
   if (!mounted) {
-    // 初期表示用のシンプルなスケルトン
     return (
       <>
         <Head>
@@ -152,10 +164,9 @@ export default function Home() {
         transition={{ duration: 0.5 }}
       >
         {/* 共通コンポーネント */}
-        <Feedback />       {/* フィードバック通知 */}
-        <DeadlineWarning />{/* 締め切り警告 */}
-        <FloatingMenu />   {/* 設定メニュー */}
-        {/* 🔥 追加: 全画面でフローティングポモドーロタイマーを表示 */}
+        <Feedback />
+        <DeadlineWarning />
+        <FloatingMenu />
         <FloatingPomodoroTimer />
 
         {/* ログインしていない場合はログイン/登録画面を表示 */}
@@ -164,7 +175,6 @@ export default function Home() {
             <LoginRegister />
           </div>
         ) : (
-          // ログイン済みの場合はアプリのメイン画面を表示
           <>
             {/* モバイル版レイアウト */}
             {isMobile ? (
@@ -176,11 +186,11 @@ export default function Home() {
                 
                 <AuthButton />
                 
-                {/* タブナビゲーション - モバイル版 */}
+                {/* 🔥 更新: タブナビゲーションにショップを追加 */}
                 <div className="flex mb-4 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setCurrentTab('tasks')}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
                       currentTab === 'tasks'
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-800'
@@ -190,13 +200,23 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => setCurrentTab('games')}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
                       currentTab === 'games'
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-800'
                     }`}
                   >
-                    🎮 ゲームセンター
+                    🎮 ゲーム
+                  </button>
+                  <button
+                    onClick={() => setCurrentTab('shop')}
+                    className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                      currentTab === 'shop'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    🛍️ ショップ
                   </button>
                 </div>
 
@@ -211,12 +231,17 @@ export default function Home() {
                       <TaskStats />
                       <EnhancedAddTask />
                       <EnhancedTaskList />
-                      {/* 🔥 削除: PomodoroStats - フローティングタイマーに統一 */}
                     </>
-                  ) : (
+                  ) : currentTab === 'games' ? (
                     <>
                       <PointsDashboard />
                       <GameCenter />
+                    </>
+                  ) : (
+                    // 🔥 新機能: ショップタブ
+                    <>
+                      <PointsDashboard />
+                      <Shop />
                     </>
                   )}
                 </div>
@@ -237,7 +262,7 @@ export default function Home() {
                     <AuthButton />
                   </div>
                   
-                  {/* タブナビゲーション - デスクトップ版 */}
+                  {/* 🔥 更新: タブナビゲーションにショップを追加 */}
                   <div className="flex mt-6 space-x-1">
                     <button
                       onClick={() => setCurrentTab('tasks')}
@@ -258,6 +283,16 @@ export default function Home() {
                       }`}
                     >
                       🎮 ゲームセンター
+                    </button>
+                    <button
+                      onClick={() => setCurrentTab('shop')}
+                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                        currentTab === 'shop'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      🛍️ ポイントショップ
                     </button>
                   </div>
                 </motion.div>
@@ -294,7 +329,6 @@ export default function Home() {
                     
                     {/* 右側のサイドバー */}
                     <div className="col-span-12 md:col-span-4 space-y-6">
-                      {/* ポイントダッシュボード */}
                       <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                         <PointsDashboard />
                       </motion.div>
@@ -303,7 +337,7 @@ export default function Home() {
                         <TaskStats />
                       </motion.div>
                       
-                      {/* 🔥 修正: ポモドーロセクションを情報カードに変更 */}
+                      {/* ポモドーロ情報カード */}
                       <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                         <h2 className="text-xl font-bold mb-4">⏱️ ポモドーロタイマー</h2>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -327,25 +361,36 @@ export default function Home() {
                       <NewFeaturesCard />
                     </div>
                   </div>
-                ) : (
-                  // ゲームセンタータブのコンテンツ
+                ) : currentTab === 'games' ? (
+                  // ゲームセンタータブ
                   <div className="grid grid-cols-12 gap-6 mb-20">
-                    {/* ゲームセンターメイン */}
                     <div className="col-span-12 md:col-span-8">
                       <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                         <GameCenter />
                       </motion.div>
                     </div>
                     
-                    {/* ゲームセンターサイドバー */}
                     <div className="col-span-12 md:col-span-4 space-y-6">
-                      {/* ポイントダッシュボード */}
                       <motion.div className="p-6 rounded-lg shadow-lg bg-white">
                         <PointsDashboard />
                       </motion.div>
-                      
-                      {/* ゲームセンター紹介カード */}
                       <GameCenterGuide />
+                    </div>
+                  </div>
+                ) : (
+                  // 🔥 新機能: ショップタブ
+                  <div className="grid grid-cols-12 gap-6 mb-20">
+                    <div className="col-span-12 md:col-span-8">
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <Shop />
+                      </motion.div>
+                    </div>
+                    
+                    <div className="col-span-12 md:col-span-4 space-y-6">
+                      <motion.div className="p-6 rounded-lg shadow-lg bg-white">
+                        <PointsDashboard />
+                      </motion.div>
+                      <ShopGuide />
                     </div>
                   </div>
                 )}
@@ -360,20 +405,17 @@ export default function Home() {
 
 /**
  * PWAインストールガイドコンポーネント
- * PWAをインストールする方法を説明するカード
  */
 function InstallPWAGuide() {
   const [isPWA, setIsPWA] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
   
-  // PWA環境かどうかを検出
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsPWA(true); // すでにPWAとしてインストールされている
+      setIsPWA(true);
     }
   }, []);
   
-  // すでにPWAとしてインストールされている場合や非表示にした場合は何も表示しない
   if (isPWA || !showGuide) return null;
   
   return (
@@ -412,7 +454,6 @@ function InstallPWAGuide() {
 
 /**
  * 新機能紹介カードコンポーネント
- * v1.6.0で追加された新機能を紹介
  */
 function NewFeaturesCard() {
   const [showFeatures, setShowFeatures] = useState(true);
@@ -439,26 +480,26 @@ function NewFeaturesCard() {
       
       <div className="space-y-2 text-sm text-purple-700">
         <div className="flex items-center">
+          <span className="mr-2">🛍️</span>
+          <span>ポイントショップ新登場</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">🎨</span>
+          <span>グラデーション背景テーマ</span>
+        </div>
+        <div className="flex items-center">
           <span className="mr-2">⏱️</span>
           <span>フローティングポモドーロタイマー</span>
         </div>
         <div className="flex items-center">
-          <span className="mr-2">🎮</span>
-          <span>ゲーム中でもタイマー継続動作</span>
-        </div>
-        <div className="flex items-center">
           <span className="mr-2">📊</span>
-          <span>タスクソート機能（5種類の並び順）</span>
-        </div>
-        <div className="flex items-center">
-          <span className="mr-2">📱</span>
-          <span>スマートフォン最適化完了</span>
+          <span>タスクソート機能強化</span>
         </div>
       </div>
       
       <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
         <p className="text-xs text-purple-600">
-          <strong>v1.6.0の特徴:</strong> ゲーム中でもポモドーロタイマーが動作し続け、生産性とリフレッシュのバランスを最適化。タスク管理もより使いやすくなりました。
+          <strong>v1.6.0の特徴:</strong> ポイントで購入した美しい背景テーマでアプリをカスタマイズ！ゲーム中でもポモドーロタイマーが継続し、生産性とリフレッシュの完璧なバランスを実現。
         </p>
       </div>
     </motion.div>
@@ -506,10 +547,57 @@ function GameCenterGuide() {
           <p className="font-medium text-green-800 mb-1">🏆 スコア記録</p>
           <p>最高スコア、平均スコア、プレイ回数が自動的に記録されます。</p>
         </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * 🔥 新機能: ショップガイドコンポーネント
+ */
+function ShopGuide() {
+  const [showGuide, setShowGuide] = useState(true);
+  const { backgroundTheme } = useThemeStore();
+  
+  if (!showGuide) return null;
+  
+  return (
+    <motion.div 
+      className="p-6 rounded-lg shadow-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.3 }}
+    >
+      <div className="flex justify-between items-start">
+        <h2 className="text-lg font-bold text-pink-800 mb-3">🛍️ ポイントショップガイド</h2>
+        <button
+          onClick={() => setShowGuide(false)}
+          className="text-pink-500 hover:text-pink-700"
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+      </div>
+      
+      <div className="space-y-3 text-sm text-pink-700">
+        <div className="bg-white p-3 rounded-lg border border-pink-100">
+          <p className="font-medium text-pink-800 mb-1">🎨 背景テーマ</p>
+          <p>美しいグラデーション背景でアプリをカスタマイズ。4段階のレアリティがあります！</p>
+        </div>
         
-        <div className="bg-white p-3 rounded-lg border border-green-100">
-          <p className="font-medium text-green-800 mb-1">🎯 ゲームの種類</p>
-          <p>• ディノラン: ジャンプで障害物回避<br/>• フラッピーバード: パイプの隙間を通過</p>
+        <div className="bg-white p-3 rounded-lg border border-pink-100">
+          <p className="font-medium text-pink-800 mb-1">💎 購入システム</p>
+          <p>タスク完了やログインボーナスで貯めたポイントで購入できます。</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-pink-100">
+          <p className="font-medium text-pink-800 mb-1">🌟 レアリティシステム</p>
+          <p>• コモン: 50pt<br/>• レア: 75pt<br/>• エピック: 100pt<br/>• レジェンダリー: 200-250pt</p>
+        </div>
+        
+        <div className="bg-white p-3 rounded-lg border border-pink-100">
+          <p className="font-medium text-pink-800 mb-1">✨ 現在適用中</p>
+          <p className="text-purple-700 font-medium">{backgroundTheme.name}</p>
         </div>
       </div>
     </motion.div>

@@ -1,16 +1,17 @@
 /**
- * ポイントショップコンポーネント
+ * ポイントショップコンポーネント（プレビュー機能完全削除版）
  * 
  * ポイントで購入できるアイテム（背景テーマなど）を表示・購入するコンポーネント
- * v1.6.0: 新機能 - グラデーション背景ショップ
+ * v1.6.0: シンプルな購入・適用機能のみ
  */
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useShopStore, ShopItem } from '@/store/shopStore';
 import { usePointStore } from '@/store/pointStore';
 import { useThemeStore, PURCHASABLE_BACKGROUNDS } from '@/store/themeStore';
 import { useAuthStore } from '@/store/auth';
+import { useFeedbackStore } from '@/store/feedbackStore';
 
 /**
  * ポイントショップコンポーネント
@@ -19,6 +20,7 @@ export default function Shop() {
   const { user } = useAuthStore();
   const { userPoints } = usePointStore();
   const { setBackgroundTheme, backgroundTheme } = useThemeStore();
+  const { setMessage } = useFeedbackStore();
   const { 
     shopItems, 
     userPurchases, 
@@ -32,7 +34,6 @@ export default function Shop() {
   } = useShopStore();
   
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'background'>('background');
-  const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
   const [purchasingItem, setPurchasingItem] = useState<string | null>(null);
 
   // データ読み込み
@@ -44,10 +45,10 @@ export default function Shop() {
   }, [user, loadShopItems, loadUserPurchases]);
 
   /**
-   * アイテムを購入する
+   * アイテムを購入してテーマを自動適用
    */
   const handlePurchase = async (item: ShopItem) => {
-    if (purchasingItem) return; // 重複防止
+    if (purchasingItem) return;
     
     setPurchasingItem(item.id);
     try {
@@ -55,6 +56,20 @@ export default function Shop() {
       if (success) {
         // 購入成功後にデータを再読み込み
         await loadUserPurchases();
+        
+        // 背景テーマの場合は自動的に適用
+        if (item.type === 'background') {
+          const themeData = PURCHASABLE_BACKGROUNDS[item.id];
+          if (themeData) {
+            // 購入済みに設定
+            themeData.isPurchased = true;
+            
+            // テーマを適用
+            setBackgroundTheme(themeData);
+            
+            setMessage(`🎨 「${item.name}」を購入して適用しました！`);
+          }
+        }
       }
     } finally {
       setPurchasingItem(null);
@@ -68,6 +83,7 @@ export default function Shop() {
     const themeData = PURCHASABLE_BACKGROUNDS[item.id];
     if (themeData) {
       setBackgroundTheme(themeData);
+      setMessage(`🎨 「${item.name}」を適用しました！`);
     }
   };
 
@@ -161,7 +177,7 @@ export default function Shop() {
             <div className="text-lg font-bold text-green-800">{getTotalSpentPoints()}pt</div>
           </div>
           <div className="bg-purple-50 p-3 rounded-lg">
-            <div className="text-sm text-purple-600">今すぐ適用中</div>
+            <div className="text-sm text-purple-600">適用中テーマ</div>
             <div className="text-lg font-bold text-purple-800">{backgroundTheme.name}</div>
           </div>
         </div>
@@ -216,14 +232,10 @@ export default function Shop() {
               return (
                 <motion.div
                   key={item.id}
-                  className={`border-2 rounded-lg p-4 transition-all ${getRarityStyle(item.rarity)} ${
-                    previewItem?.id === item.id ? 'ring-2 ring-blue-400' : ''
-                  }`}
+                  className={`border-2 rounded-lg p-4 transition-all ${getRarityStyle(item.rarity)}`}
                   whileHover={{ scale: 1.02 }}
-                  onMouseEnter={() => setPreviewItem(item)}
-                  onMouseLeave={() => setPreviewItem(null)}
                 >
-                  {/* プレビュー */}
+                  {/* テーマプレビュー */}
                   <div 
                     className="w-full h-20 rounded-lg mb-3 border border-gray-200 relative overflow-hidden"
                     style={{ 
@@ -279,6 +291,7 @@ export default function Shop() {
                         >
                           {isCurrentTheme ? '✓ 適用中' : '🎨 適用する'}
                         </button>
+                        
                         <div className="text-center">
                           <span className="text-xs text-green-600 font-medium">✓ 購入済み</span>
                         </div>
@@ -315,56 +328,6 @@ export default function Shop() {
         )}
       </div>
 
-      {/* プレビューモーダル */}
-      <AnimatePresence>
-        {previewItem && (
-          <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setPreviewItem(null)}
-          >
-            <motion.div
-              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center mb-4">
-                <h3 className="text-xl font-bold mb-2">{previewItem.name}</h3>
-                <p className="text-gray-600 mb-4">{previewItem.description}</p>
-              </div>
-              
-              {/* 大きなプレビュー */}
-              <div 
-                className="w-full h-32 rounded-lg mb-4 border border-gray-200"
-                style={{ 
-                  background: previewItem.preview,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-              
-              <div className="flex justify-between items-center mb-4">
-                <span className={`px-3 py-1 rounded-full text-sm ${getRarityTextStyle(previewItem.rarity)} bg-opacity-20`}>
-                  {getRarityText(previewItem.rarity)}
-                </span>
-                <span className="text-lg font-bold text-blue-600">💎 {previewItem.price}pt</span>
-              </div>
-              
-              <button
-                onClick={() => setPreviewItem(null)}
-                className="w-full py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-              >
-                閉じる
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* 購入履歴セクション */}
       {userPurchases.length > 0 && (
         <div className="p-4 border-t bg-gray-50">
@@ -390,6 +353,29 @@ export default function Shop() {
           )}
         </div>
       )}
+
+      {/* テーマカスタマイズガイド */}
+      <div className="p-4 border-t bg-gradient-to-r from-purple-50 to-pink-50">
+        <h3 className="text-lg font-bold mb-3 text-purple-800">🎨 テーマカスタマイズガイド</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="bg-white p-3 rounded-lg border border-purple-100">
+            <p className="font-medium text-purple-700 mb-1">🔄 即座適用</p>
+            <p className="text-gray-600">購入したテーマは即座にアプリ全体に適用され、美しい背景を楽しめます。</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-purple-100">
+            <p className="font-medium text-purple-700 mb-1">⭐ レアリティシステム</p>
+            <p className="text-gray-600">コモン、レア、エピック、レジェンダリーの4段階。高レアリティほど美しい！</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-purple-100">
+            <p className="font-medium text-purple-700 mb-1">🎯 ポイント活用</p>
+            <p className="text-gray-600">タスク完了とログインボーナスでポイントを貯めて、お気に入りテーマをゲット！</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-purple-100">
+            <p className="font-medium text-purple-700 mb-1">🎨 簡単切り替え</p>
+            <p className="text-gray-600">購入済みテーマは「適用する」ボタンでいつでも簡単に切り替えできます。</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
