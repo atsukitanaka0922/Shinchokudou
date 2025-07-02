@@ -3,7 +3,7 @@
  * 
  * アプリケーションの使用方法、機能説明、更新履歴などを表示するコンポーネント
  * アプリのドキュメント機能として機能し、ユーザーガイドを提供します
- * v1.6.0: 習慣管理機能追加・チェックボタン改善・ソート機能強化
+ * v1.7.0: 効果音システム追加、習慣管理機能追加・チェックボタン改善・ソート機能強化
  */
 
 import React from 'react';
@@ -386,7 +386,7 @@ export default function ReadmeContent() {
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium text-green-600">v1.6.1 - 🔄 ポイントショップ＆習慣管理機能追加</p>
+            <p className="font-medium text-green-600">v1.7.0 - � 効果音システム追加</p>
             <ul className="list-disc pl-5">
               <li><strong>🛍️ ポイントショップ新登場：</strong>グラデーション背景テーマ購入</li>
               <li><strong>🎨 テーマシステム：</strong>4段階レアリティの美しい背景</li>

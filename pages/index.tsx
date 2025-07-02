@@ -3,7 +3,7 @@
  * 
  * アプリケーションのメインビューを提供
  * レスポンシブデザインに対応し、モバイルとデスクトップで最適なUIを表示
- * v1.6.0: 習慣管理タブと AI習慣提案機能を追加
+ * v1.7.0: 効果音システム追加、習慣管理タブと AI習慣提案機能を追加
  */
 
 import { useEffect, useState } from "react";
@@ -280,7 +280,7 @@ export default function Home() {
                       <AppLogo width={100} height={100} className="mr-4" />
                       <div>
                         <h1 className="text-3xl font-bold">進捗堂</h1>
-                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.6.1</p>
+                        <p className="text-gray-600 text-sm mt-1">AI搭載タスク管理アプリ v1.7.0</p>
                       </div>
                     </div>
                     <AuthButton />
@@ -518,7 +518,7 @@ function NewFeaturesCard() {
       transition={{ delay: 1.2 }}
     >
       <div className="flex justify-between items-start">
-        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 v1.6.1 新機能！</h2>
+        <h2 className="text-lg font-bold text-purple-800 mb-3">🎉 v1.7.0 新機能！</h2>
         <button
           onClick={() => setShowFeatures(false)}
           className="text-purple-500 hover:text-purple-700"
@@ -549,7 +549,7 @@ function NewFeaturesCard() {
       
       <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
         <p className="text-xs text-purple-600">
-          <strong>v1.6.1の特徴:</strong> 習慣完了でポイント獲得！継続的な良い習慣形成をサポートし、タスクと習慣の両方で生産性を最大化。
+          <strong>v1.7.0の特徴:</strong> 効果音システム追加！タスク・サブタスク・習慣完了時に効果音が再生され、達成感とモチベーションを向上。音量調整や無効化も可能で、より快適なタスク管理体験を提供。
         </p>
       </div>
     </motion.div>

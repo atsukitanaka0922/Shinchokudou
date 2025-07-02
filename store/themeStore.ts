@@ -61,7 +61,7 @@ interface ThemeState {
   addPurchasedTheme: (themeId: string) => void; // ショップ連携用
   hasPurchasedTheme: (themeId: string) => boolean; // 購入済みチェック
   
-  // 🔥 v1.6.1 新機能
+  // 🔥 v1.7.0 新機能
   forceApplyTheme: () => void;  // 強制適用（トラブル時用）
   
   // ヘルパー関数
@@ -838,7 +838,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     { 
       name: "theme-storage",
-      version: 5, // 🔥 v1.6.1でバージョンアップ
+      version: 6, // 🔥 v1.7.0でバージョンアップ
       migrate: (persistedState: any, version: number) => {
         if (version < 5) {
           // 旧バージョンからの移行
