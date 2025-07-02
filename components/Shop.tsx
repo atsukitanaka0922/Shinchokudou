@@ -36,6 +36,8 @@ export default function Shop() {
   
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'background' | 'nature' | 'cosmic' | 'luxury'>('background');
   const [selectedRarity, setSelectedRarity] = useState<'all' | 'common' | 'rare' | 'epic' | 'legendary'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'rarity'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [purchasingItem, setPurchasingItem] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0); // 🔥 追加: リトライ回数
 
@@ -159,8 +161,41 @@ export default function Shop() {
     }
   };
 
-  // フィルターされたアイテム
-  const filteredItems = shopItems.filter(item => {
+  /**
+   * レアリティの数値を取得（ソート用）
+   */
+  const getRarityValue = (rarity: ShopItem['rarity']) => {
+    switch (rarity) {
+      case 'common': return 1;
+      case 'rare': return 2;
+      case 'epic': return 3;
+      case 'legendary': return 4;
+      default: return 0;
+    }
+  };
+
+  /**
+   * ソート方式を変更
+   */
+  const handleSort = (type: 'name' | 'price' | 'rarity') => {
+    if (sortBy === type) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(type);
+      setSortOrder('asc');
+    }
+  };
+
+  /**
+   * ソートアイコンを取得
+   */
+  const getSortIcon = (type: 'name' | 'price' | 'rarity') => {
+    if (sortBy !== type) return '↕️';
+    return sortOrder === 'asc' ? '⬆️' : '⬇️';
+  };
+
+  // フィルター＆ソート済みアイテム
+  const filteredAndSortedItems = shopItems.filter(item => {
     // カテゴリフィルタ
     if (selectedCategory === 'nature') {
       return item.id.includes('forest') || item.id.includes('bamboo') || item.id.includes('lavender') || 
@@ -185,6 +220,25 @@ export default function Shop() {
     // レアリティフィルタ
     if (selectedRarity === 'all') return true;
     return item.rarity === selectedRarity;
+  }).sort((a, b) => {
+    // ソート処理
+    let comparison = 0;
+    
+    switch (sortBy) {
+      case 'name':
+        comparison = a.name.localeCompare(b.name, 'ja');
+        break;
+      case 'price':
+        comparison = a.price - b.price;
+        break;
+      case 'rarity':
+        comparison = getRarityValue(a.rarity) - getRarityValue(b.rarity);
+        break;
+      default:
+        comparison = 0;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   // ユーザーがログインしていない場合
@@ -334,6 +388,46 @@ export default function Shop() {
             </button>
           ))}
         </div>
+        
+        {/* ソート機能 */}
+        <div className="flex flex-wrap gap-2 items-center mt-3 pt-3 border-t border-gray-200">
+          <span className="text-sm text-gray-600 py-2">並び順:</span>
+          <button
+            onClick={() => handleSort('name')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              sortBy === 'name'
+                ? 'bg-indigo-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border'
+            }`}
+          >
+            名前順 {getSortIcon('name')}
+          </button>
+          <button
+            onClick={() => handleSort('price')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              sortBy === 'price'
+                ? 'bg-indigo-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border'
+            }`}
+          >
+            価格順 {getSortIcon('price')}
+          </button>
+          <button
+            onClick={() => handleSort('rarity')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              sortBy === 'rarity'
+                ? 'bg-indigo-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border'
+            }`}
+          >
+            レアリティ順 {getSortIcon('rarity')}
+          </button>
+          
+          {/* 現在の表示件数 */}
+          <div className="ml-auto text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            {filteredAndSortedItems.length}件表示
+          </div>
+        </div>
       </div>
 
       {/* ショップアイテム一覧 */}
@@ -355,7 +449,7 @@ export default function Shop() {
               🔄 再試行
             </button>
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : filteredAndSortedItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <div className="text-4xl mb-3">🎨</div>
             <p>選択されたカテゴリにはアイテムがありません</p>
@@ -363,7 +457,7 @@ export default function Shop() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredItems.map((item) => {
+            {filteredAndSortedItems.map((item) => {
               // 🔥 修正: テーマストアからも購入済み状態をチェック
               const isPurchasedInShop = hasPurchasedItem(item.id);
               const isPurchasedInTheme = hasPurchasedTheme(item.id);
@@ -543,7 +637,7 @@ export default function Shop() {
       {/* テーマカスタマイズガイド */}
       <div className="p-4 border-t bg-gradient-to-r from-purple-50 to-pink-50">
         <h3 className="text-lg font-bold mb-3 text-purple-800">🎨 テーマカスタマイズガイド</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div className="bg-white p-3 rounded-lg border border-purple-100">
             <p className="font-medium text-purple-700 mb-1">🔄 即座適用</p>
             <p className="text-gray-600">購入したテーマは即座にアプリ全体に適用され、美しい背景を楽しめます。</p>
@@ -553,12 +647,20 @@ export default function Shop() {
             <p className="text-gray-600">コモン、レア、エピック、レジェンダリーの4段階。高レアリティほど美しい！</p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-purple-100">
+            <p className="font-medium text-purple-700 mb-1">🔍 カテゴリ＆ソート</p>
+            <p className="text-gray-600">自然系・宇宙系・高級系で分類。名前・価格・レアリティ順で並び替え可能。</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-purple-100">
             <p className="font-medium text-purple-700 mb-1">🎯 ポイント活用</p>
             <p className="text-gray-600">タスク完了とログインボーナスでポイントを貯めて、お気に入りテーマをゲット！</p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-purple-100">
             <p className="font-medium text-purple-700 mb-1">🎨 簡単切り替え</p>
             <p className="text-gray-600">購入済みテーマは「適用する」ボタンでいつでも簡単に切り替えできます。</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-purple-100">
+            <p className="font-medium text-purple-700 mb-1">💎 価格表示</p>
+            <p className="text-gray-600">価格順ソートで予算に合わせて選択。コモン30pt〜レジェンダリー500ptまで。</p>
           </div>
         </div>
       </div>

@@ -44,6 +44,7 @@ export default function ImprovedHabitManager() {
   const [sortType, setSortType] = useState<SortType>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [filterCompleted, setFilterCompleted] = useState<'all' | 'completed' | 'incomplete'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 新しい習慣フォームの状態
   const [newHabit, setNewHabit] = useState<CreateHabitData>({
@@ -68,10 +69,19 @@ export default function ImprovedHabitManager() {
   const stats = useMemo(() => getHabitStats(), [habits]);
 
   /**
-   * ソート済み・フィルタ済み習慣リストを取得
+   * ソート済み・フィルタ済み・検索済み習慣リストを取得
    */
   const getSortedFilteredHabits = (habitList: Habit[]) => {
     let filtered = [...habitList];
+    
+    // 検索クエリでフィルタ
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(habit => 
+        habit.title.toLowerCase().includes(query) ||
+        (habit.description && habit.description.toLowerCase().includes(query))
+      );
+    }
     
     // 完了状態でフィルタ
     if (filterCompleted !== 'all') {
@@ -258,6 +268,33 @@ export default function ImprovedHabitManager() {
   const getSortIcon = (type: SortType) => {
     if (sortType !== type) return '↕️';
     return sortOrder === 'asc' ? '⬆️' : '⬇️';
+  };
+
+  /**
+   * ソートタイプのラベルを取得
+   */
+  const getSortTypeLabel = (type: SortType) => {
+    const labels = {
+      'name': '名前',
+      'created': '作成日',
+      'streak': 'ストリーク',
+      'completion': '完了率',
+      'priority': '優先度',
+      'reminder': 'リマインダー時間'
+    };
+    return labels[type];
+  };
+
+  /**
+   * フィルタのラベルを取得
+   */
+  const getFilterLabel = (filter: 'all' | 'completed' | 'incomplete') => {
+    const labels = {
+      'all': 'すべての習慣',
+      'completed': '完了済みの習慣',
+      'incomplete': '未完了の習慣'
+    };
+    return labels[filter];
   };
 
   // ログインしていない場合
@@ -492,62 +529,208 @@ export default function ImprovedHabitManager() {
           )}
         </AnimatePresence>
 
-        {/* ソート・フィルタ コントロール */}
+        {/* 検索バー */}
         {(selectedTab === 'today' || selectedTab === 'all') && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <div className="flex flex-wrap items-center gap-4">
-              {/* ソートボタン */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-700">ソート:</span>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-400 text-lg">🔍</span>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                  }
+                }}
+                placeholder="習慣を検索... (ESCでクリア)"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm text-sm"
+              />
+              {searchQuery && (
                 <button
-                  onClick={() => handleSort('name')}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    sortType === 'name' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  名前 {getSortIcon('name')}
+                  <span className="text-lg">✕</span>
                 </button>
-                <button
-                  onClick={() => handleSort('streak')}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    sortType === 'streak' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  ストリーク {getSortIcon('streak')}
-                </button>
-                <button
-                  onClick={() => handleSort('reminder')}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    sortType === 'reminder' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  時間 {getSortIcon('reminder')}
-                </button>
-                <button
-                  onClick={() => handleSort('completion')}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    sortType === 'completion' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  完了率 {getSortIcon('completion')}
-                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* 改善されたソート・フィルタ コントロール */}
+        {(selectedTab === 'today' || selectedTab === 'all') && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-gray-200 shadow-sm"
+          >
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              {/* ソートセクション */}
+              <div className="flex flex-col space-y-2">
+                <span className="text-sm font-semibold text-gray-700 flex items-center">
+                  <span className="text-base mr-2">📊</span>
+                  ソート:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleSort('name')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      sortType === 'name' 
+                        ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-700 hover:bg-blue-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>📝</span>
+                    <span>名前</span>
+                    <span>{getSortIcon('name')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSort('streak')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      sortType === 'streak' 
+                        ? 'bg-orange-500 text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-700 hover:bg-orange-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>🔥</span>
+                    <span>ストリーク</span>
+                    <span>{getSortIcon('streak')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSort('reminder')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      sortType === 'reminder' 
+                        ? 'bg-green-500 text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-700 hover:bg-green-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>⏰</span>
+                    <span>時間</span>
+                    <span>{getSortIcon('reminder')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSort('completion')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      sortType === 'completion' 
+                        ? 'bg-purple-500 text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-700 hover:bg-purple-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>📈</span>
+                    <span>完了率</span>
+                    <span>{getSortIcon('completion')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSort('created')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      sortType === 'created' 
+                        ? 'bg-indigo-500 text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-700 hover:bg-indigo-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>📅</span>
+                    <span>作成日</span>
+                    <span>{getSortIcon('created')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSort('priority')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      sortType === 'priority' 
+                        ? 'bg-red-500 text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-700 hover:bg-red-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>⭐</span>
+                    <span>優先度</span>
+                    <span>{getSortIcon('priority')}</span>
+                  </button>
+                </div>
               </div>
               
-              {/* フィルタ */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-700">表示:</span>
-                <select
-                  value={filterCompleted}
-                  onChange={(e) => setFilterCompleted(e.target.value as any)}
-                  className="px-3 py-1 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">すべて</option>
-                  <option value="completed">完了済み</option>
-                  <option value="incomplete">未完了</option>
-                </select>
+              {/* 区切り線 */}
+              <div className="hidden md:block w-px h-12 bg-gray-300"></div>
+              
+              {/* フィルタセクション */}
+              <div className="flex flex-col space-y-2">
+                <span className="text-sm font-semibold text-gray-700 flex items-center">
+                  <span className="text-base mr-2">🔍</span>
+                  表示フィルタ:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterCompleted('all')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      filterCompleted === 'all'
+                        ? 'bg-gray-600 text-white shadow-md transform scale-105'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>📋</span>
+                    <span>すべて</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterCompleted('completed')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      filterCompleted === 'completed'
+                        ? 'bg-green-600 text-white shadow-md transform scale-105'
+                        : 'bg-white text-gray-700 hover:bg-green-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>✅</span>
+                    <span>完了済み</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterCompleted('incomplete')}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center space-x-1 ${
+                      filterCompleted === 'incomplete'
+                        ? 'bg-yellow-600 text-white shadow-md transform scale-105'
+                        : 'bg-white text-gray-700 hover:bg-yellow-100 border border-gray-300'
+                    }`}
+                  >
+                    <span>⏳</span>
+                    <span>未完了</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+            
+            {/* 現在のソート状態の表示 */}
+            <div className="mt-3 pt-3 border-t border-gray-300">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-xs text-gray-600">
+                <div className="flex flex-col md:flex-row md:items-center gap-2">
+                  <span>
+                    現在のソート: <strong>{getSortTypeLabel(sortType)}</strong> 
+                    ({sortOrder === 'asc' ? '昇順' : '降順'})
+                  </span>
+                  <span className="hidden md:inline">•</span>
+                  <span>
+                    表示: <strong>{getFilterLabel(filterCompleted)}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {searchQuery && (
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                      検索: "{searchQuery}"
+                    </span>
+                  )}
+                  <span className="bg-gray-100 px-2 py-1 rounded-full">
+                    {selectedTab === 'today' 
+                      ? `${getSortedFilteredHabits(todayHabits).length}件表示`
+                      : selectedTab === 'all'
+                      ? `${getSortedFilteredHabits(habits).length}件表示`
+                      : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         )}
 
         {/* 習慣リスト */}
@@ -560,29 +743,60 @@ export default function ImprovedHabitManager() {
               exit={{ opacity: 0, y: -20 }}
             >
               <h3 className="text-lg font-medium mb-4">📅 今日の習慣</h3>
-              {todayHabits.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-3">🌱</div>
-                  <p>今日実行する習慣がありません</p>
-                  <p className="text-sm">新しい習慣を追加してみましょう！</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {getSortedFilteredHabits(todayHabits).map((habit) => {
-                    const isCompleted = HabitUtils.isCompletedToday(habit, new Date());
-                    return (
-                      <ImprovedHabitCard
-                        key={`${habit.id}-${isCompleted}-${Date.now()}`}
-                        habit={habit}
-                        onToggle={toggleHabitCompletion}
-                        onEdit={startEditHabit}
-                        onDelete={removeHabit}
-                        showActions={true}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+              {(() => {
+                const filteredTodayHabits = getSortedFilteredHabits(todayHabits);
+                
+                if (todayHabits.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-3">🌱</div>
+                      <p>今日実行する習慣がありません</p>
+                      <p className="text-sm">新しい習慣を追加してみましょう！</p>
+                    </div>
+                  );
+                }
+                
+                if (filteredTodayHabits.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-3">🔍</div>
+                      <p>検索条件に一致する習慣が見つかりません</p>
+                      {searchQuery && (
+                        <p className="text-sm">
+                          「{searchQuery}」の検索結果: 0件
+                        </p>
+                      )}
+                      <button
+                        onClick={() => {
+                          setSearchQuery('');
+                          setFilterCompleted('all');
+                        }}
+                        className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        フィルタをリセット
+                      </button>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {filteredTodayHabits.map((habit) => {
+                      const isCompleted = HabitUtils.isCompletedToday(habit, new Date());
+                      return (
+                        <ImprovedHabitCard
+                          key={`${habit.id}-${isCompleted}-${Date.now()}`}
+                          habit={habit}
+                          onToggle={toggleHabitCompletion}
+                          onEdit={startEditHabit}
+                          onDelete={removeHabit}
+                          showActions={true}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
 
@@ -605,29 +819,60 @@ export default function ImprovedHabitManager() {
               exit={{ opacity: 0, y: -20 }}
             >
               <h3 className="text-lg font-medium mb-4">📋 すべての習慣</h3>
-              {habits.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-3">📝</div>
-                  <p>まだ習慣が登録されていません</p>
-                  <p className="text-sm">新しい習慣を追加してみましょう！</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {getSortedFilteredHabits(habits).map((habit) => {
-                    const isCompleted = HabitUtils.isCompletedToday(habit, new Date());
-                    return (
-                      <ImprovedHabitCard
-                        key={`${habit.id}-${isCompleted}-${habit.completionHistory.length}`}
-                        habit={habit}
-                        onToggle={toggleHabitCompletion}
-                        onEdit={startEditHabit}
-                        onDelete={removeHabit}
-                        showActions={true}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+              {(() => {
+                const filteredAllHabits = getSortedFilteredHabits(habits);
+                
+                if (habits.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-3">📝</div>
+                      <p>まだ習慣が登録されていません</p>
+                      <p className="text-sm">新しい習慣を追加してみましょう！</p>
+                    </div>
+                  );
+                }
+                
+                if (filteredAllHabits.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-3">🔍</div>
+                      <p>検索条件に一致する習慣が見つかりません</p>
+                      {searchQuery && (
+                        <p className="text-sm">
+                          「{searchQuery}」の検索結果: 0件
+                        </p>
+                      )}
+                      <button
+                        onClick={() => {
+                          setSearchQuery('');
+                          setFilterCompleted('all');
+                        }}
+                        className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        フィルタをリセット
+                      </button>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {filteredAllHabits.map((habit) => {
+                      const isCompleted = HabitUtils.isCompletedToday(habit, new Date());
+                      return (
+                        <ImprovedHabitCard
+                          key={`${habit.id}-${isCompleted}-${habit.completionHistory.length}`}
+                          habit={habit}
+                          onToggle={toggleHabitCompletion}
+                          onEdit={startEditHabit}
+                          onDelete={removeHabit}
+                          showActions={true}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
 
