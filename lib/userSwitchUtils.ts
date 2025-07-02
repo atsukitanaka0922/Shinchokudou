@@ -10,8 +10,6 @@
  * @param userId クリアするユーザーID（nullの場合は全てクリア）
  */
 export const clearAllUserData = async (userId: string | null = null) => {
-  console.log('全ストアのユーザーデータをクリア開始:', userId);
-  
   try {
     // 🔥 動的インポートで各ストアをクリア（循環参照を避ける）
     
@@ -19,27 +17,20 @@ export const clearAllUserData = async (userId: string | null = null) => {
     const { useEnhancedTaskStore } = await import('@/store/enhancedTaskStore');
     const taskStore = useEnhancedTaskStore.getState();
     taskStore.clearTasks();
-    console.log('✅ タスクストアをクリアしました');
     
     // ポイントストアは自動的にユーザー変更を検出するため、手動クリア不要
-    console.log('✅ ポイントストアは自動処理されます');
     
     // ゲームセンターストアのクリア
     const { useGameCenterStore } = await import('@/store/gameCenterStore');
     const gameStore = useGameCenterStore.getState();
     // ゲームストアには明示的なクリア機能がないため、新しいユーザーの場合は自動的に空になる
-    console.log('✅ ゲームセンターストアは自動処理されます');
     
     // ショップストアのクリア
     const { useShopStore } = await import('@/store/shopStore');
     const shopStore = useShopStore.getState();
     // ショップストアも自動的にユーザー変更を検出するため、手動クリア不要
-    console.log('✅ ショップストアは自動処理されます');
     
     // テーマストアは既にユーザー切り替え処理が実装済み
-    console.log('✅ テーマストアは自動処理されます');
-    
-    console.log('✅ 全ストアのクリア処理が完了しました');
     
   } catch (error) {
     console.error('❌ ストアクリア処理中にエラーが発生:', error);

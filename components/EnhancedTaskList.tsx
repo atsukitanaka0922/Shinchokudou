@@ -116,7 +116,6 @@ export default function EnhancedTaskList() {
     
     // マウント後にタスクを確実に読み込む
     if (user) {
-      console.log("拡張タスクリストコンポーネントがマウントされました - タスク読み込み");
       loadTasks();
     }
     
@@ -266,15 +265,12 @@ export default function EnhancedTaskList() {
   const handlePriorityChange = async (taskId: string, newPriority: PriorityLevel) => {
     // 重複実行を防止
     if (priorityChanging[taskId]) {
-      console.log('優先度変更処理中のため、リクエストをスキップ');
       return;
     }
 
     try {
       // 処理中フラグを設定
       setPriorityChanging(prev => ({ ...prev, [taskId]: true }));
-      
-      console.log(`優先度変更開始: taskId=${taskId}, priority=${newPriority}`);
       
       // 編集値を即座に更新（UI反応性向上）
       setEditValues(prev => ({
@@ -284,8 +280,6 @@ export default function EnhancedTaskList() {
       
       // Firestoreに保存
       await setPriority(taskId, newPriority);
-      
-      console.log(`優先度変更完了: taskId=${taskId}, priority=${newPriority}`);
       
       // 編集モードを終了
       setEditingField(null);

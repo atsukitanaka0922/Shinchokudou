@@ -44,7 +44,6 @@ export default function Shop() {
   // データ読み込み
   useEffect(() => {
     if (user) {
-      console.log("ショップ: ユーザーログイン検出、データ読み込み開始");
       loadShopItems();
       loadUserPurchases();
     }
@@ -54,7 +53,6 @@ export default function Shop() {
    * 🔥 追加: データ読み込みリトライ
    */
   const handleRetry = () => {
-    console.log("ショップ: データ読み込みリトライ");
     clearError();
     setRetryCount(prev => prev + 1);
   };
@@ -65,14 +63,11 @@ export default function Shop() {
   const handlePurchase = async (item: ShopItem) => {
     if (purchasingItem) return;
     
-    console.log(`ショップ: アイテム購入開始 - ${item.name}`);
     setPurchasingItem(item.id);
     
     try {
       const success = await purchaseItem(item.id);
       if (success) {
-        console.log(`ショップ: アイテム購入成功 - ${item.name}`);
-        
         // 購入成功後にデータを再読み込み
         await loadUserPurchases();
         
@@ -87,11 +82,8 @@ export default function Shop() {
             setBackgroundTheme(themeData);
             
             setMessage(`🎨 「${item.name}」を購入して適用しました！`);
-            console.log(`ショップ: テーマ適用完了 - ${item.name}`);
           }
         }
-      } else {
-        console.log(`ショップ: アイテム購入失敗 - ${item.name}`);
       }
     } catch (error) {
       console.error(`ショップ: アイテム購入エラー - ${item.name}:`, error);
@@ -108,7 +100,6 @@ export default function Shop() {
     if (themeData) {
       setBackgroundTheme(themeData);
       setMessage(`🎨 「${item.name}」を適用しました！`);
-      console.log(`ショップ: テーマ適用 - ${item.name}`);
     }
   };
 

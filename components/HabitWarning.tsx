@@ -115,7 +115,6 @@ export default function HabitWarning() {
       // Firestoreを更新
       await markHabitComplete(habit.id);
       
-      console.log(`習慣「${habitTitle}」を完了しました`);
     } catch (error) {
       console.error('習慣の即座完了に失敗:', error);
       

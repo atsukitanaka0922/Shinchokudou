@@ -113,8 +113,6 @@ export default function FloatingMenu() {
 
   // 🔥 修正: 背景テーマの設定と即座適用
   const handleBgThemeChange = (selectedTheme: any) => {
-    console.log('フローティングメニュー: テーマ変更:', selectedTheme.theme);
-    
     try {
       // テーマを設定
       setBackgroundTheme(selectedTheme.theme);
@@ -128,7 +126,6 @@ export default function FloatingMenu() {
           if (document.body) {
             document.body.style.backgroundColor = selectedTheme.theme.value;
             document.body.style.background = '';
-            console.log('フォールバック: 直接DOM操作でテーマ適用:', selectedTheme.theme.value);
           }
         }
       }, 100);

@@ -124,7 +124,6 @@ class AudioService {
    */
   async play(soundType: SoundType): Promise<void> {
     if (!this.isEnabled()) {
-      console.log('効果音が無効化されています:', soundType);
       return;
     }
 
@@ -140,7 +139,6 @@ class AudioService {
       
       // 再生を試行
       await audio.play();
-      console.log('効果音を再生しました:', soundType);
     } catch (error) {
       console.warn('効果音の再生に失敗:', soundType, error);
     }

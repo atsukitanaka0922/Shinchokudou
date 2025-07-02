@@ -70,8 +70,6 @@ export default function Home() {
   // 認証状態とデータの初期化（1回のみ実行）
   useEffect(() => {
     if (user && !dataInitialized) {
-      console.log("ホームページがマウントされました - データ読み込み開始");
-      
       const initializeData = async () => {
         try {
           // 基本データをロード
@@ -90,7 +88,6 @@ export default function Home() {
           await loadHabits();
           
           setDataInitialized(true);
-          console.log("データ初期化完了", { user: user.uid });
         } catch (error) {
           console.error("データ初期化エラー:", error);
         }
@@ -131,7 +128,7 @@ export default function Home() {
       "serviceWorker" in navigator &&
       window.workbox !== undefined
     ) {
-      console.log("PWA対応: ServiceWorkerが有効です");
+      // PWA対応のServiceWorkerは静かに処理
     }
   }, []);
 

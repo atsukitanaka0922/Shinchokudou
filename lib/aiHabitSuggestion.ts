@@ -351,8 +351,6 @@ const analyzeTaskHistory = async (userId: string): Promise<string[]> => {
  */
 export async function suggestHabits(userId: string): Promise<HabitSuggestion[]> {
   try {
-    console.log('AI習慣提案を生成中...', userId);
-    
     // 並行して各種分析を実行
     const [existingCategories, taskPatterns, timeBasedSuggestions, weatherSuggestions] = await Promise.all([
       analyzeExistingHabits(userId),
@@ -360,13 +358,6 @@ export async function suggestHabits(userId: string): Promise<HabitSuggestion[]> 
       Promise.resolve(getTimeBasedSuggestions()),
       getWeatherBasedSuggestions()
     ]);
-    
-    console.log('分析結果:', {
-      existingCategories,
-      taskPatterns,
-      timeBasedCount: timeBasedSuggestions.length,
-      weatherCount: weatherSuggestions.length
-    });
     
     // 提案を収集
     let suggestions: HabitSuggestion[] = [];
@@ -413,7 +404,6 @@ export async function suggestHabits(userId: string): Promise<HabitSuggestion[]> 
     // 最大5つまでに制限
     const finalSuggestions = uniqueSuggestions.slice(0, 5);
     
-    console.log('AI習慣提案完了:', finalSuggestions.length, '件');
     return finalSuggestions;
     
   } catch (error) {
