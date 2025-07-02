@@ -49,7 +49,7 @@ export default function AudioSettings({ isOpen, onClose }: AudioSettingsProps) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-96 max-w-[90vw] max-h-[85vh] sm:max-h-[90vh] flex flex-col"
+            className="fixed top-2 sm:top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-xl z-50 w-96 max-w-[90vw] max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] flex flex-col"
           >
             {/* ヘッダー */}
             <div className="flex justify-between items-center p-4 sm:p-6 pb-3 sm:pb-4 border-b border-gray-200">
