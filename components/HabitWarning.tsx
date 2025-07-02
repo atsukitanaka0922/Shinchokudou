@@ -3,7 +3,6 @@
  * 
  * 20時頃に未完了の習慣がある場合に警告バナーを表示
  * DeadlineWarningと同様のスタイルで習慣の実行を促す
- * v1.6.1: 習慣タスク機能の実装
  */
 
 import { useState, useEffect } from 'react';

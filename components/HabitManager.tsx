@@ -3,7 +3,6 @@
  * 
  * チェックボタン、ソート機能、改善されたUIを追加
  * より直感的で使いやすい習慣管理インターフェースを提供
- * v1.6.0: 習慣タスク機能の実装 + UI大幅改善
  */
 
 import { useState, useEffect, useMemo } from 'react';

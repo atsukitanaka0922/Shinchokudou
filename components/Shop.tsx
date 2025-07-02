@@ -34,7 +34,8 @@ export default function Shop() {
     clearError // 🔥 追加: エラークリア
   } = useShopStore();
   
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'background'>('background');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'background' | 'nature' | 'cosmic' | 'luxury'>('background');
+  const [selectedRarity, setSelectedRarity] = useState<'all' | 'common' | 'rare' | 'epic' | 'legendary'>('all');
   const [purchasingItem, setPurchasingItem] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0); // 🔥 追加: リトライ回数
 
@@ -160,8 +161,30 @@ export default function Shop() {
 
   // フィルターされたアイテム
   const filteredItems = shopItems.filter(item => {
-    if (selectedCategory === 'all') return true;
+    // カテゴリフィルタ
+    if (selectedCategory === 'nature') {
+      return item.id.includes('forest') || item.id.includes('bamboo') || item.id.includes('lavender') || 
+             item.id.includes('spring') || item.id.includes('mountain') || item.id.includes('tea');
+    }
+    if (selectedCategory === 'cosmic') {
+      return item.id.includes('cosmic') || item.id.includes('stellar') || item.id.includes('galactic') || 
+             item.id.includes('supernova') || item.id.includes('aurora') || item.id.includes('rainbow');
+    }
+    if (selectedCategory === 'luxury') {
+      return item.id.includes('platinum') || item.id.includes('golden') || item.id.includes('diamond') || 
+             item.id.includes('royal') || item.rarity === 'legendary';
+    }
+    if (selectedCategory === 'background') {
+      return item.type === 'background';
+    }
+    if (selectedCategory === 'all') {
+      return true;
+    }
     return item.type === selectedCategory;
+  }).filter(item => {
+    // レアリティフィルタ
+    if (selectedRarity === 'all') return true;
+    return item.rarity === selectedRarity;
   });
 
   // ユーザーがログインしていない場合
@@ -247,7 +270,7 @@ export default function Shop() {
 
       {/* カテゴリータブ */}
       <div className="px-4 py-2 border-b bg-gray-50">
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2 mb-3">
           <button
             onClick={() => setSelectedCategory('background')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -256,18 +279,60 @@ export default function Shop() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            🎨 背景テーマ
+            🎨 すべて
           </button>
           <button
-            onClick={() => setSelectedCategory('all')}
+            onClick={() => setSelectedCategory('nature')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedCategory === 'all'
-                ? 'bg-blue-500 text-white'
+              selectedCategory === 'nature'
+                ? 'bg-green-500 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            🛍️ すべて
+            🌿 自然系
           </button>
+          <button
+            onClick={() => setSelectedCategory('cosmic')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedCategory === 'cosmic'
+                ? 'bg-purple-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            🌌 宇宙系
+          </button>
+          <button
+            onClick={() => setSelectedCategory('luxury')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedCategory === 'luxury'
+                ? 'bg-yellow-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            👑 高級系
+          </button>
+        </div>
+        
+        {/* レアリティフィルタ */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm text-gray-600 py-2">レアリティ:</span>
+          {(['all', 'common', 'rare', 'epic', 'legendary'] as const).map((rarity) => (
+            <button
+              key={rarity}
+              onClick={() => setSelectedRarity(rarity)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                selectedRarity === rarity
+                  ? rarity === 'legendary' ? 'bg-yellow-500 text-white' :
+                    rarity === 'epic' ? 'bg-purple-500 text-white' :
+                    rarity === 'rare' ? 'bg-blue-500 text-white' :
+                    rarity === 'common' ? 'bg-gray-500 text-white' :
+                    'bg-gray-800 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border'
+              }`}
+            >
+              {rarity === 'all' ? '全て' : getRarityText(rarity as any)}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -292,7 +357,9 @@ export default function Shop() {
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>このカテゴリにはアイテムがありません</p>
+            <div className="text-4xl mb-3">🎨</div>
+            <p>選択されたカテゴリにはアイテムがありません</p>
+            <p className="text-sm mt-2">別のカテゴリまたはレアリティを選択してください</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

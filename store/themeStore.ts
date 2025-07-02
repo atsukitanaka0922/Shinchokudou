@@ -112,35 +112,15 @@ const DEFAULT_BACKGROUNDS: BackgroundTheme[] = [
 ];
 
 /**
- * 購入可能な背景テーマのIDと値のマッピング
+ * 購入可能な背景テーマのIDと値のマッピング（大幅拡張版）
  */
 export const PURCHASABLE_BACKGROUNDS: { [key: string]: BackgroundTheme } = {
+  // 🌅 サンセット・サンライズシリーズ（コモン〜レア）
   'bg_sunset_wave': {
     id: 'bg_sunset_wave',
     name: 'サンセットウェーブ',
     type: 'gradient',
     value: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)',
-    isPurchased: false
-  },
-  'bg_ocean_breeze': {
-    id: 'bg_ocean_breeze',
-    name: 'オーシャンブリーズ',
-    type: 'gradient',
-    value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    isPurchased: false
-  },
-  'bg_forest_mist': {
-    id: 'bg_forest_mist',
-    name: 'フォレストミスト',
-    type: 'gradient',
-    value: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    isPurchased: false
-  },
-  'bg_purple_dream': {
-    id: 'bg_purple_dream',
-    name: 'パープルドリーム',
-    type: 'gradient',
-    value: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
     isPurchased: false
   },
   'bg_golden_hour': {
@@ -150,6 +130,195 @@ export const PURCHASABLE_BACKGROUNDS: { [key: string]: BackgroundTheme } = {
     value: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
     isPurchased: false
   },
+  'bg_morning_glow': {
+    id: 'bg_morning_glow',
+    name: 'モーニンググロウ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ff9a8b 0%, #f6416c 30%, #a8edea 100%)',
+    isPurchased: false
+  },
+  'bg_dawn_sky': {
+    id: 'bg_dawn_sky',
+    name: 'ドーンスカイ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ff6a00 0%, #ee0979 50%, #ff6a00 100%)',
+    isPurchased: false
+  },
+
+  // 🌊 オーシャン・ウォーターシリーズ（コモン〜レア）
+  'bg_ocean_breeze': {
+    id: 'bg_ocean_breeze',
+    name: 'オーシャンブリーズ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    isPurchased: false
+  },
+  'bg_tropical_blue': {
+    id: 'bg_tropical_blue',
+    name: 'トロピカルブルー',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #00c9ff 0%, #92fe9d 100%)',
+    isPurchased: false
+  },
+  'bg_deep_ocean': {
+    id: 'bg_deep_ocean',
+    name: 'ディープオーシャン',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #74b9ff 100%)',
+    isPurchased: false
+  },
+  'bg_aqua_marine': {
+    id: 'bg_aqua_marine',
+    name: 'アクアマリン',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    isPurchased: false
+  },
+  'bg_crystal_lake': {
+    id: 'bg_crystal_lake',
+    name: 'クリスタルレイク',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #74b9ff 0%, #0984e3 30%, #6c5ce7 100%)',
+    isPurchased: false
+  },
+
+  // 🌲 フォレスト・ネイチャーシリーズ（コモン〜レア）
+  'bg_forest_mist': {
+    id: 'bg_forest_mist',
+    name: 'フォレストミスト',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    isPurchased: false
+  },
+  'bg_emerald_forest': {
+    id: 'bg_emerald_forest',
+    name: 'エメラルドフォレスト',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #00b09b 0%, #96c93d 100%)',
+    isPurchased: false
+  },
+  'bg_mountain_meadow': {
+    id: 'bg_mountain_meadow',
+    name: 'マウンテンメドウ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #74b9ff 0%, #00b894 50%, #00cec9 100%)',
+    isPurchased: false
+  },
+  'bg_spring_garden': {
+    id: 'bg_spring_garden',
+    name: 'スプリングガーデン',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #56ab2f 0%, #a8e6cf 50%, #dcedc1 100%)',
+    isPurchased: false
+  },
+
+  // 💜 パープル・マジックシリーズ（レア〜エピック）
+  'bg_purple_dream': {
+    id: 'bg_purple_dream',
+    name: 'パープルドリーム',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
+    isPurchased: false
+  },
+  'bg_mystic_purple': {
+    id: 'bg_mystic_purple',
+    name: 'ミスティックパープル',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+    isPurchased: false
+  },
+  'bg_violet_symphony': {
+    id: 'bg_violet_symphony',
+    name: 'バイオレットシンフォニー',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #8360c3 0%, #2ebf91 50%, #f093fb 100%)',
+    isPurchased: false
+  },
+  'bg_galaxy_dust': {
+    id: 'bg_galaxy_dust',
+    name: 'ギャラクシーダスト',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #4c63d2 0%, #9867f0 30%, #ff9a9e 70%, #fecfef 100%)',
+    isPurchased: false
+  },
+
+  // 🌸 ピンク・フローラルシリーズ（コモン〜レア）
+  'bg_cherry_blossom': {
+    id: 'bg_cherry_blossom',
+    name: 'チェリーブロッサム',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ffedef 0%, #f093fb 50%, #fa709a 100%)',
+    isPurchased: false
+  },
+  'bg_pink_velvet': {
+    id: 'bg_pink_velvet',
+    name: 'ピンクベルベット',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ff9a9e 0%, #f6416c 50%, #e84393 100%)',
+    isPurchased: false
+  },
+  'bg_rose_garden': {
+    id: 'bg_rose_garden',
+    name: 'ローズガーデン',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ff9a8b 0%, #f6416c 30%, #ffeef8 100%)',
+    isPurchased: false
+  },
+  'bg_cotton_candy': {
+    id: 'bg_cotton_candy',
+    name: 'コットンキャンディ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ffeef8 0%, #f093fb 30%, #a8edea 100%)',
+    isPurchased: false
+  },
+
+  // 🔥 ファイア・ウォームシリーズ（レア〜エピック）
+  'bg_fire_sunset': {
+    id: 'bg_fire_sunset',
+    name: 'ファイアサンセット',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ff6a00 0%, #ee0979 30%, #f6416c 70%, #ff9a8b 100%)',
+    isPurchased: false
+  },
+  'bg_lava_flow': {
+    id: 'bg_lava_flow',
+    name: 'ラバフロウ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #2c1810 0%, #8b0000 30%, #ff4500 70%, #ffd700 100%)',
+    isPurchased: false
+  },
+  'bg_phoenix_wing': {
+    id: 'bg_phoenix_wing',
+    name: 'フェニックスウィング',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ff8a00 0%, #e52e71 25%, #9d50bb 50%, #6e48aa 75%, #2d1b69 100%)',
+    isPurchased: false
+  },
+
+  // ❄️ アイス・ウィンターシリーズ（レア〜エピック）
+  'bg_winter_frost': {
+    id: 'bg_winter_frost',
+    name: 'ウィンターフロスト',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #e6f3ff 0%, #74b9ff 30%, #0984e3 70%, #2d3436 100%)',
+    isPurchased: false
+  },
+  'bg_ice_crystal': {
+    id: 'bg_ice_crystal',
+    name: 'アイスクリスタル',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #f7f1e3 0%, #74b9ff 30%, #6c5ce7 70%, #a29bfe 100%)',
+    isPurchased: false
+  },
+  'bg_arctic_aurora': {
+    id: 'bg_arctic_aurora',
+    name: 'アークティックオーロラ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #00cec9 0%, #74b9ff 25%, #6c5ce7 50%, #a29bfe 75%, #fd79a8 100%)',
+    isPurchased: false
+  },
+
+  // 🌌 コズミック・スペースシリーズ（エピック〜レジェンダリー）
   'bg_cosmic_nebula': {
     id: 'bg_cosmic_nebula',
     name: 'コズミックネビュラ',
@@ -157,6 +326,29 @@ export const PURCHASABLE_BACKGROUNDS: { [key: string]: BackgroundTheme } = {
     value: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
     isPurchased: false
   },
+  'bg_stellar_gateway': {
+    id: 'bg_stellar_gateway',
+    name: 'ステラゲートウェイ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #1e2761 0%, #3a1c71 20%, #d76d77 40%, #ffaf7b 60%, #ffeaa7 80%, #fdcb6e 100%)',
+    isPurchased: false
+  },
+  'bg_galactic_storm': {
+    id: 'bg_galactic_storm',
+    name: 'ギャラクティックストーム',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #2c3e50 0%, #4a569d 20%, #8b5fbf 40%, #e74c3c 60%, #f39c12 80%, #f1c40f 100%)',
+    isPurchased: false
+  },
+  'bg_supernova': {
+    id: 'bg_supernova',
+    name: 'スーパーノヴァ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #000000 0%, #2c3e50 15%, #8e44ad 30%, #e74c3c 45%, #f39c12 60%, #f1c40f 75%, #ffffff 100%)',
+    isPurchased: false
+  },
+
+  // 🌈 レインボー・プリズムシリーズ（エピック〜レジェンダリー）
   'bg_aurora_borealis': {
     id: 'bg_aurora_borealis',
     name: 'オーロラボレアリス',
@@ -169,6 +361,89 @@ export const PURCHASABLE_BACKGROUNDS: { [key: string]: BackgroundTheme } = {
     name: 'レインボープリズム',
     type: 'gradient',
     value: 'linear-gradient(135deg, #ff0000 0%, #ff8000 16.66%, #ffff00 33.33%, #80ff00 50%, #00ffff 66.66%, #8000ff 83.33%, #ff0080 100%)',
+    isPurchased: false
+  },
+  'bg_spectrum_wave': {
+    id: 'bg_spectrum_wave',
+    name: 'スペクトラムウェーブ',
+    type: 'gradient',
+    value: 'linear-gradient(45deg, #ff006e, #ff8500, #ffbe0b, #8fb339, #52b69a, #34a0a4, #168aad, #1a759f, #1e6091, #184e77)',
+    isPurchased: false
+  },
+
+  // 🎨 アーティスティック・アブストラクトシリーズ（エピック〜レジェンダリー）
+  'bg_abstract_art': {
+    id: 'bg_abstract_art',
+    name: 'アブストラクトアート',
+    type: 'gradient',
+    value: 'linear-gradient(45deg, #ff9a9e 0%, #fecfef 20%, #a8edea 40%, #fed6e3 60%, #d299c2 80%, #fef9d7 100%)',
+    isPurchased: false
+  },
+  'bg_paint_splash': {
+    id: 'bg_paint_splash',
+    name: 'ペイントスプラッシュ',
+    type: 'gradient',
+    value: 'radial-gradient(circle at 20% 50%, #ff006e 0%, transparent 50%), radial-gradient(circle at 80% 20%, #8338ec 0%, transparent 50%), radial-gradient(circle at 40% 80%, #3a86ff 0%, transparent 50%), linear-gradient(135deg, #06ffa5, #ffd23f)',
+    isPurchased: false
+  },
+  'bg_watercolor_dream': {
+    id: 'bg_watercolor_dream',
+    name: 'ウォーターカラードリーム',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, rgba(255, 154, 158, 0.8), rgba(254, 207, 239, 0.8), rgba(168, 237, 234, 0.8), rgba(254, 214, 227, 0.8))',
+    isPurchased: false
+  },
+
+  // 🌟 ルクス・プレミアムシリーズ（レジェンダリー）
+  'bg_platinum_elegance': {
+    id: 'bg_platinum_elegance',
+    name: 'プラチナエレガンス',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #f7f1e3 0%, #e8e8e8 20%, #ffffff 40%, #f0f0f0 60%, #d3d3d3 80%, #c0c0c0 100%)',
+    isPurchased: false
+  },
+  'bg_golden_luxury': {
+    id: 'bg_golden_luxury',
+    name: 'ゴールデンラグジュアリー',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #ffd89b 0%, #19547b 100%)',
+    isPurchased: false
+  },
+  'bg_diamond_sparkle': {
+    id: 'bg_diamond_sparkle',
+    name: 'ダイアモンドスパークル',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%)',
+    isPurchased: false
+  },
+  'bg_royal_majesty': {
+    id: 'bg_royal_majesty',
+    name: 'ロイヤルマジェスティ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #141e30 0%, #243b55 25%, #8b5fbf 50%, #f39c12 75%, #f1c40f 100%)',
+    isPurchased: false
+  },
+
+  // 🌿 ヒーリング・ナチュラルシリーズ（コモン〜レア）
+  'bg_bamboo_zen': {
+    id: 'bg_bamboo_zen',
+    name: 'バンブーゼン',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #e8f5e8 0%, #a8e6a3 50%, #74c776 100%)',
+    isPurchased: false
+  },
+  'bg_lavender_fields': {
+    id: 'bg_lavender_fields',
+    name: 'ラベンダーフィールズ',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #e8e8ff 0%, #d8b9ff 50%, #b19cd9 100%)',
+    isPurchased: false
+  },
+  'bg_tea_ceremony': {
+    id: 'bg_tea_ceremony',
+    name: 'ティーセレモニー',
+    type: 'gradient',
+    value: 'linear-gradient(135deg, #f5f5dc 0%, #ddd5b8 50%, #b8b09a 100%)',
     isPurchased: false
   }
 };
