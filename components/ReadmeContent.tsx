@@ -189,8 +189,28 @@ export default function ReadmeContent() {
         </p>
       </div>
       
-      {/* 🔥 新機能: ソート・フィルタ機能 */}
-      <h4 className="font-medium mt-3 mb-1">14. ソート・フィルタ機能</h4>
+      {/* 🔥 新機能: 効果音システム */}
+      <h4 className="font-medium mt-3 mb-1">15. 効果音システム</h4>
+      <div className="pl-4 mb-3">
+        <p className="text-sm text-gray-700">
+          タスクや習慣の完了時に心地よい効果音を再生する機能です。達成感を高め、モチベーション維持に役立ちます。
+        </p>
+        <div className="bg-orange-50 p-2 rounded mt-2 text-xs">
+          <strong>効果音の機能:</strong>
+          <ul className="list-disc pl-5 space-y-1 mt-1">
+            <li><strong>タスク完了音:</strong> メインタスク完了時の満足感のある効果音</li>
+            <li><strong>サブタスク完了音:</strong> サブタスク達成時の軽快な効果音</li>
+            <li><strong>習慣完了音:</strong> 習慣継続時の達成感のある効果音</li>
+            <li><strong>音量調整:</strong> 0-100%での細かな音量設定</li>
+            <li><strong>有効/無効切り替え:</strong> 効果音のON/OFF設定</li>
+            <li><strong>テスト再生:</strong> 設定画面で各効果音の試聴が可能</li>
+            <li><strong>自動保存:</strong> 設定はローカルストレージに永続化</li>
+          </ul>
+          <p className="mt-2 text-orange-600">
+            <strong>【アクセス方法】:</strong> 右下のフローティングメニュー → 🔊効果音設定ボタンから設定画面にアクセスできます。
+          </p>
+        </div>
+      </div>
       <div className="pl-4 mb-3">
         <p className="text-sm text-gray-700">
           タスクと習慣を効率的に管理するための並び替え・絞り込み機能です。自分の使いやすい方法で整理できます。
@@ -249,6 +269,9 @@ export default function ReadmeContent() {
             <strong>通知設定:</strong> ブラウザの通知許可を「許可」に設定すると、タイマー終了時や習慣リマインダーが表示されます
           </li>
           <li>
+            <strong>🔥 効果音設定:</strong> フローティングメニューの🔊効果音設定で効果音の有効/無効・音量を調整できます
+          </li>
+          <li>
             <strong>アプリとして使用:</strong> ホーム画面に追加して、ネイティブアプリのように使用できます
           </li>
         </ol>
@@ -283,6 +306,9 @@ export default function ReadmeContent() {
           <strong>・🔥 ソート機能活用:</strong> 習慣はストリーク順、タスクは優先度順など、状況に応じてソート方法を変更しましょう。
         </p>
         <p>
+          <strong>・🔥 効果音活用:</strong> 効果音を有効にすることで、タスクや習慣完了時の達成感が向上し、継続モチベーションが高まります。
+        </p>
+        <p>
           <strong>・定期的な振り返り:</strong> 完了したタスクと習慣の統計を確認して、自分の生産性パターンを把握しましょう。
         </p>
         <p>
@@ -297,6 +323,9 @@ export default function ReadmeContent() {
       <h3 className="text-lg font-semibold mt-4 mb-2">⚙️ トラブルシューティング</h3>
       
       <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
+        <p>
+          <strong>・🔥 効果音が再生されない:</strong> フローティングメニューの🔊効果音設定で効果音が有効になっているか確認。テスト再生ボタンでブラウザの音声権限を確認してください。
+        </p>
         <p>
           <strong>・アラーム音が鳴らない:</strong> ポモドーロタブの「アラーム音をテスト」ボタンをクリックして、ブラウザの音声再生権限を有効にしてください。
         </p>
@@ -332,11 +361,32 @@ export default function ReadmeContent() {
       {/* 更新履歴セクション */}
       <h3 className="text-lg font-semibold mt-4 mb-2">🔄 更新履歴</h3>
 
-      {/* 最新バージョン v1.6.0 */}
+      {/* 最新バージョン v1.7.0 */}
       <div className="pl-4 mb-3">
         <div className="space-y-2 text-sm text-gray-700">
           <div>
-            <p className="font-medium text-green-600">v1.6.1 (最新) - 🔄 ポイントショップ＆習慣管理機能追加</p>
+            <p className="font-medium text-blue-600">v1.7.0 (最新) - 🔊 効果音システム追加アップデート</p>
+            <ul className="list-disc pl-5">
+              <li><strong>🔊 効果音機能の実装:</strong> タスク・サブタスク・習慣完了時の心地よい効果音再生</li>
+              <li><strong>🎵 3種類の効果音:</strong> タスク・サブタスク・習慣それぞれに専用の効果音</li>
+              <li><strong>🎛️ 効果音設定UI:</strong> フローティングメニューから効果音の有効/無効・音量調整</li>
+              <li><strong>🎧 テスト再生機能:</strong> 設定画面で各効果音の試聴が可能</li>
+              <li><strong>💾 自動設定保存:</strong> ローカルストレージに効果音設定を永続化</li>
+              <li><strong>🔧 エラーハンドリング:</strong> ブラウザの音声制限に対応した適切な再生制御</li>
+              <li><strong>⚡ プリロード機能:</strong> ページ読み込み時に効果音ファイルを事前読み込み</li>
+              <li><strong>🎯 AudioServiceクラス:</strong> シングルトンパターンによる効率的な音声管理</li>
+              <li><strong>🔄 React Hook:</strong> useAudioSettingsでコンポーネント間での設定共有</li>
+              <li><strong>📦 音声キャッシュ:</strong> HTMLAudioElementのキャッシュ機能でパフォーマンス向上</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* v1.6.0 */}
+      <div className="pl-4 mb-3">
+        <div className="space-y-2 text-sm text-gray-700">
+          <div>
+            <p className="font-medium text-green-600">v1.6.1 - 🔄 ポイントショップ＆習慣管理機能追加</p>
             <ul className="list-disc pl-5">
               <li><strong>🛍️ ポイントショップ新登場：</strong>グラデーション背景テーマ購入</li>
               <li><strong>🎨 テーマシステム：</strong>4段階レアリティの美しい背景</li>
@@ -513,34 +563,13 @@ export default function ReadmeContent() {
           <strong>・🔥 習慣管理:</strong> Firebase Firestore, リアルタイム同期, セキュリティルール
         </p>
         <p>
+          <strong>・🎵 BGM:</strong> Nightwave Plaza
+        </p>
+        <p>
+          <strong>・🔊 効果音:</strong> 効果音ラボ、Springin'Sound Stock
+        </p>
+        <p>
           <strong>・AI機能:</strong> 機械学習アルゴリズム, 天気API連携, パターン分析
-        </p>
-      </div>
-      
-      {/* 今後の予定 */}
-      <h3 className="text-lg font-semibold mt-4 mb-2">🚀 今後の開発予定</h3>
-      
-      <div className="pl-4 mb-3 space-y-2 text-sm text-gray-700">
-        <p>
-          <strong>・📊 高度な分析機能:</strong> 生産性パターンの詳細分析・予測機能
-        </p>
-        <p>
-          <strong>・🤝 チーム機能:</strong> 家族や同僚との習慣・タスク共有機能
-        </p>
-        <p>
-          <strong>・📱 プッシュ通知:</strong> より高度なリマインダー・モチベーション機能
-        </p>
-        <p>
-          <strong>・🎮 ゲーム拡張:</strong> 新しいミニゲームの追加・ランキング機能
-        </p>
-        <p>
-          <strong>・📈 データエクスポート:</strong> CSV・PDF形式での統計データ出力
-        </p>
-        <p>
-          <strong>・🌐 多言語対応:</strong> 英語・韓国語・中国語への対応
-        </p>
-        <p>
-          <strong>・🔗 外部連携:</strong> Google Calendar・Notion・Slackとの連携
         </p>
       </div>
       
@@ -561,7 +590,7 @@ export default function ReadmeContent() {
         </a>
         <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs text-blue-700">
-            <strong>開発者からのメッセージ:</strong> 進捗堂をご利用いただき、ありがとうございます！v1.6.1で習慣管理機能を追加し、より包括的な生産性向上ツールとなりました。皆様のフィードバックにより、今後もより良いアプリに進化していきます。継続的な成長と良い習慣形成を一緒に実現しましょう！
+            <strong>開発者からのメッセージ:</strong> 進捗堂をご利用いただき、ありがとうございます！v1.7.0で効果音システムを追加し、タスクや習慣の完了時により一層の達成感を得られるようになりました。心地よい効果音で継続的なモチベーション維持をサポートします。皆様のフィードバックにより、今後もより良いアプリに進化していきます。継続的な成長と良い習慣形成を一緒に実現しましょう！
           </p>
         </div>
       </div>
@@ -569,10 +598,10 @@ export default function ReadmeContent() {
       {/* フッター */}
       <div className="mt-6 pt-4 border-t border-gray-200 text-center">
         <p className="text-xs text-gray-500">
-          進捗堂 v1.6.0 - AI搭載タスク管理・習慣管理・ゲームアプリ
+          進捗堂 v1.7.0 - AI搭載タスク管理・習慣管理・ゲームアプリ
         </p>
         <p className="text-xs text-gray-400 mt-1">
-          🔄 習慣管理機能追加 | 📱 PWA対応 | ⚡ 60FPS対応 | 🎨 テーマカスタマイズ
+          � 効果音システム追加 | �🔄 習慣管理機能 | 📱 PWA対応 | ⚡ 60FPS対応 | 🎨 テーマカスタマイズ
         </p>
         <p className="text-xs text-gray-400 mt-1">
           © 2025 進捗堂 - 継続的な成長をサポートする生産性アプリ

@@ -10,6 +10,7 @@ import { useMoodStore } from '@/store/moodStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useBGMStore } from '@/store/bgmStore';
 import ReadmeContent from './ReadmeContent';
+import AudioSettings from './AudioSettings';
 
 // 🔥 修正: 利用可能な背景テーマ（購入不要の無料テーマ）
 const bgThemeOptions = [
@@ -87,6 +88,9 @@ export default function FloatingMenu() {
   
   // READMEモーダルの表示状態
   const [showReadme, setShowReadme] = useState(false);
+  
+  // 効果音設定の表示状態
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
 
   // BGMの初期化と状態同期
   useEffect(() => {
@@ -198,6 +202,20 @@ export default function FloatingMenu() {
                 >
                   <span className="mr-2">📖</span>
                   アプリの使い方を確認する
+                </button>
+              </div>
+              
+              {/* 効果音設定ボタン */}
+              <div className="mb-3">
+                <button
+                  onClick={() => {
+                    setShowAudioSettings(true);
+                    setIsOpen(false);
+                  }}
+                  className="w-full py-2 px-3 bg-purple-100 text-purple-700 rounded-md text-sm font-medium hover:bg-purple-200 transition-colors flex items-center"
+                >
+                  <span className="mr-2">🔊</span>
+                  効果音設定
                 </button>
               </div>
               
@@ -338,6 +356,12 @@ export default function FloatingMenu() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* 効果音設定モーダル */}
+      <AudioSettings 
+        isOpen={showAudioSettings} 
+        onClose={() => setShowAudioSettings(false)} 
+      />
     </>
   );
 }

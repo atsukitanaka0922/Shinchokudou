@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useHabitStore } from '@/store/habitStore';
 import { useAuthStore } from '@/store/auth';
 import { HabitFrequency, Habit, CreateHabitData, HabitUtils } from '@/lib/habitInterfaces';
+import { playSound } from '@/lib/audioService';
 import HabitWarning from './HabitWarning';
 import AIHabitSuggestions from './AIHabitSuggestions';
 
@@ -914,6 +915,23 @@ function ImprovedHabitCard({ habit, onToggle, onEdit, onDelete, showActions }: I
   const completionRate = calculateCompletionRate(habit, 30); // 過去30日間の完了率
   const recentRate = calculateCompletionRate(habit, 7); // 過去7日間の完了率
   
+  /**
+   * 効果音付きの習慣トグル処理
+   */
+  const handleToggle = async () => {
+    // まず習慣をトグル
+    onToggle(habit.id);
+    
+    // 完了状態に変わる場合は効果音を再生
+    if (!isCompleted) {
+      try {
+        await playSound('habit-complete');
+      } catch (error) {
+        console.warn('習慣完了効果音の再生に失敗:', error);
+      }
+    }
+  };
+  
   return (
     <motion.div
       className={`p-4 border-2 rounded-xl transition-all duration-300 ${
@@ -930,7 +948,7 @@ function ImprovedHabitCard({ habit, onToggle, onEdit, onDelete, showActions }: I
         <div className="flex items-start space-x-4 flex-1">
           {/* 🔥 改善: 明確な枠付きチェックボタン */}
           <button
-            onClick={() => onToggle(habit.id)}
+            onClick={handleToggle}
             disabled={!habit.isActive}
             className={`mt-1 w-10 h-10 rounded-full border-3 flex items-center justify-center text-xl font-bold transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-3 focus:ring-offset-2 ${
               isCompleted

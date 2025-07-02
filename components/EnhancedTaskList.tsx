@@ -2,7 +2,6 @@
  * 拡張タスクリストコンポーネント（バグ修正版）
  * 
  * サブタスクとメモ機能を含む拡張されたタスクリスト
- * v1.6.0: 優先度変更バグを修正
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -11,6 +10,7 @@ import { useEnhancedTaskStore } from '@/store/enhancedTaskStore';
 import { useAuthStore } from '@/store/auth';
 import { PriorityLevel } from '@/lib/aiPriorityAssignment';
 import { SubTaskUtils, TaskUtils, TaskSortBy, EnhancedTask } from '@/lib/taskInterfaces';
+import { playSound } from '@/lib/audioService';
 import FloatingPomodoroTimer from './FloatingPomodoroTimer';
 
 /**
@@ -68,6 +68,47 @@ export default function EnhancedTaskList() {
   
   // 🔥 追加: 優先度変更の処理中状態を管理
   const [priorityChanging, setPriorityChanging] = useState<{[taskId: string]: boolean}>({});
+  
+  /**
+   * 効果音付きのタスク完了トグル
+   */
+  const handleToggleTask = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    const wasCompleted = task?.completed || false;
+    
+    // タスクの完了状態をトグル
+    await toggleCompleteTask(taskId);
+    
+    // 完了状態に変わった場合は効果音を再生
+    if (!wasCompleted) {
+      try {
+        await playSound('task-complete');
+      } catch (error) {
+        console.warn('タスク完了効果音の再生に失敗:', error);
+      }
+    }
+  };
+
+  /**
+   * 効果音付きのサブタスク完了トグル
+   */
+  const handleToggleSubTask = async (taskId: string, subTaskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    const subTask = task?.subTasks.find(st => st.id === subTaskId);
+    const wasCompleted = subTask?.completed || false;
+    
+    // サブタスクの完了状態をトグル
+    await toggleCompleteSubTask(taskId, subTaskId);
+    
+    // 完了状態に変わった場合は効果音を再生
+    if (!wasCompleted) {
+      try {
+        await playSound('sub-task-complete');
+      } catch (error) {
+        console.warn('サブタスク完了効果音の再生に失敗:', error);
+      }
+    }
+  };
   
   // コンポーネントのマウント状態を追跡
   useEffect(() => {
@@ -468,7 +509,7 @@ export default function EnhancedTaskList() {
                     <input
                       type="checkbox"
                       checked={task.completed}
-                      onChange={() => toggleCompleteTask(task.id)}
+                      onChange={() => handleToggleTask(task.id)}
                       className="h-5 w-5 text-blue-600 focus:ring-blue-500 rounded"
                     />
                   </div>
@@ -824,7 +865,7 @@ export default function EnhancedTaskList() {
                                   <input
                                     type="checkbox"
                                     checked={subTask.completed}
-                                    onChange={() => toggleCompleteSubTask(task.id, subTask.id)}
+                                    onChange={() => handleToggleSubTask(task.id, subTask.id)}
                                     className="h-4 w-4 text-blue-600 mr-2"
                                   />
                                   <span className={`flex-1 text-sm ${subTask.completed ? 'line-through text-gray-500' : ''}`}>
