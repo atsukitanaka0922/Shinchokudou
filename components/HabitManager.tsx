@@ -10,7 +10,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useHabitStore } from '@/store/habitStore';
 import { useAuthStore } from '@/store/auth';
-import { HabitFrequency, Habit, CreateHabitData } from '@/lib/habitInterfaces';
+import { HabitFrequency, Habit, CreateHabitData, HabitUtils } from '@/lib/habitInterfaces';
 import HabitWarning from './HabitWarning';
 import AIHabitSuggestions from './AIHabitSuggestions';
 
@@ -569,16 +569,19 @@ export default function ImprovedHabitManager() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {getSortedFilteredHabits(todayHabits).map((habit) => (
-                    <ImprovedHabitCard
-                      key={habit.id}
-                      habit={habit}
-                      onToggle={toggleHabitCompletion}
-                      onEdit={startEditHabit}
-                      onDelete={removeHabit}
-                      showActions={true}
-                    />
-                  ))}
+                  {getSortedFilteredHabits(todayHabits).map((habit) => {
+                    const isCompleted = HabitUtils.isCompletedToday(habit, new Date());
+                    return (
+                      <ImprovedHabitCard
+                        key={`${habit.id}-${isCompleted}-${Date.now()}`}
+                        habit={habit}
+                        onToggle={toggleHabitCompletion}
+                        onEdit={startEditHabit}
+                        onDelete={removeHabit}
+                        showActions={true}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
@@ -611,16 +614,19 @@ export default function ImprovedHabitManager() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {getSortedFilteredHabits(habits).map((habit) => (
-                    <ImprovedHabitCard
-                      key={habit.id}
-                      habit={habit}
-                      onToggle={toggleHabitCompletion}
-                      onEdit={startEditHabit}
-                      onDelete={removeHabit}
-                      showActions={true}
-                    />
-                  ))}
+                  {getSortedFilteredHabits(habits).map((habit) => {
+                    const isCompleted = HabitUtils.isCompletedToday(habit, new Date());
+                    return (
+                      <ImprovedHabitCard
+                        key={`${habit.id}-${isCompleted}-${habit.completionHistory.length}`}
+                        habit={habit}
+                        onToggle={toggleHabitCompletion}
+                        onEdit={startEditHabit}
+                        onDelete={removeHabit}
+                        showActions={true}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
@@ -661,7 +667,8 @@ function ImprovedHabitCard({ habit, onToggle, onEdit, onDelete, showActions }: I
   );
   
   const streak = calculateStreakForHabit(habit);
-  const completionRate = calculateCompletionRate(habit);
+  const completionRate = calculateCompletionRate(habit, 30); // 過去30日間の完了率
+  const recentRate = calculateCompletionRate(habit, 7); // 過去7日間の完了率
   
   return (
     <motion.div
@@ -747,17 +754,44 @@ function ImprovedHabitCard({ habit, onToggle, onEdit, onDelete, showActions }: I
             {completionRate > 0 && (
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-medium text-gray-700">完了率</span>
+                  <span className="text-xs font-medium text-gray-700">30日間完了率</span>
                   <span className="text-xs font-medium text-gray-700">{completionRate}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <motion.div 
-                    className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full"
+                    className={`h-2 rounded-full ${
+                      completionRate >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                      completionRate >= 70 ? 'bg-gradient-to-r from-blue-500 to-green-500' :
+                      completionRate >= 50 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                      'bg-gradient-to-r from-red-500 to-red-600'
+                    }`}
                     initial={{ width: 0 }}
                     animate={{ width: `${completionRate}%` }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
                   />
                 </div>
+                {/* 最近7日間の表示 */}
+                {recentRate !== completionRate && (
+                  <>
+                    <div className="flex justify-between items-center mb-1 mt-2">
+                      <span className="text-xs font-medium text-gray-600">最近7日間</span>
+                      <span className="text-xs font-medium text-gray-600">{recentRate}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1">
+                      <motion.div 
+                        className={`h-1 rounded-full ${
+                          recentRate >= 90 ? 'bg-gradient-to-r from-green-400 to-emerald-400' :
+                          recentRate >= 70 ? 'bg-gradient-to-r from-blue-400 to-green-400' :
+                          recentRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' :
+                          'bg-gradient-to-r from-red-400 to-red-500'
+                        }`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${recentRate}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             
@@ -853,8 +887,9 @@ function HabitStats({ stats, habits }: HabitStatsProps) {
         </h4>
         <div className="space-y-4">
           {habits.map((habit, index) => {
-            const completionRate = calculateCompletionRate(habit);
+            const completionRate = calculateCompletionRate(habit, 30); // 過去30日間の完了率
             const streak = calculateStreakForHabit(habit);
+            const recentCompletionRate = calculateCompletionRate(habit, 7); // 過去7日間の完了率
             
             return (
               <motion.div 
@@ -871,10 +906,16 @@ function HabitStats({ stats, habits }: HabitStatsProps) {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4 mb-3">
+                <div className="grid grid-cols-4 gap-3 mb-3">
                   <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-1">完了率</div>
+                    <div className="text-xs text-gray-500 mb-1">30日完了率</div>
                     <div className="text-lg font-bold text-blue-600">{completionRate}%</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-1">7日完了率</div>
+                    <div className={`text-lg font-bold ${recentCompletionRate >= 80 ? 'text-green-600' : recentCompletionRate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {recentCompletionRate}%
+                    </div>
                   </div>
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">ストリーク</div>
@@ -891,15 +932,38 @@ function HabitStats({ stats, habits }: HabitStatsProps) {
                 {/* 改善された完了率バー */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-gray-700">進捗状況</span>
+                    <span className="text-xs font-medium text-gray-700">30日間の進捗状況</span>
                     <span className="text-xs text-gray-600">{completionRate}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <motion.div 
-                      className="h-3 rounded-full bg-gradient-to-r from-blue-400 via-green-400 to-emerald-500"
+                      className={`h-3 rounded-full ${
+                        completionRate >= 90 ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                        completionRate >= 70 ? 'bg-gradient-to-r from-blue-400 to-green-400' :
+                        completionRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' :
+                        'bg-gradient-to-r from-red-400 to-red-500'
+                      }`}
                       initial={{ width: 0 }}
                       animate={{ width: `${completionRate}%` }}
                       transition={{ duration: 1, ease: "easeOut", delay: index * 0.1 }}
+                    />
+                  </div>
+                  {/* 7日間の完了率も表示 */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-gray-700">最近7日間</span>
+                    <span className="text-xs text-gray-600">{recentCompletionRate}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <motion.div 
+                      className={`h-2 rounded-full ${
+                        recentCompletionRate >= 90 ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                        recentCompletionRate >= 70 ? 'bg-gradient-to-r from-blue-400 to-green-400' :
+                        recentCompletionRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' :
+                        'bg-gradient-to-r from-red-400 to-red-500'
+                      }`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${recentCompletionRate}%` }}
+                      transition={{ duration: 1, ease: "easeOut", delay: index * 0.1 + 0.2 }}
                     />
                   </div>
                 </div>
@@ -974,33 +1038,73 @@ function HabitStats({ stats, habits }: HabitStatsProps) {
  */
 
 /**
- * 習慣の完了率を計算
+ * 習慣の完了率を計算（改善版）
+ * 過去30日間の実行予定日に対する完了率を計算
  */
-function calculateCompletionRate(habit: Habit): number {
-  if (habit.completionHistory.length === 0) return 0;
+function calculateCompletionRate(habit: Habit, days: number = 30): number {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
   
-  const completedCount = habit.completionHistory.filter(h => h.completed).length;
-  return Math.round((completedCount / habit.completionHistory.length) * 100);
+  let totalExpectedDays = 0;
+  let completedDays = 0;
+  
+  // 過去30日間の各日をチェック
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    // その日が実行予定日かチェック
+    if (HabitUtils.shouldExecuteToday(habit, d)) {
+      totalExpectedDays++;
+      
+      // その日に完了しているかチェック
+      const dateStr = d.toISOString().split('T')[0];
+      const isCompleted = habit.completionHistory.some(
+        completion => completion.date === dateStr && completion.completed
+      );
+      
+      if (isCompleted) {
+        completedDays++;
+      }
+    }
+  }
+  
+  // 実行予定日がない場合は0%を返す
+  if (totalExpectedDays === 0) return 0;
+  
+  return Math.round((completedDays / totalExpectedDays) * 100);
 }
 
 /**
- * 習慣のストリーク計算
+ * 習慣のストリーク計算（改善版）
+ * 実行予定日の連続完了数を計算
  */
 function calculateStreakForHabit(habit: Habit): number {
-  const sortedHistory = habit.completionHistory
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
+  const today = new Date();
   let streak = 0;
-  let checkDate = new Date();
+  let checkDate = new Date(today);
   
-  for (const completion of sortedHistory) {
-    const completionDate = new Date(completion.date);
-    const diffDays = Math.floor((checkDate.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24));
+  // 今日から過去に向かって連続完了日数をチェック
+  while (true) {
+    // その日が実行予定日かチェック
+    if (HabitUtils.shouldExecuteToday(habit, checkDate)) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      const isCompleted = habit.completionHistory.some(
+        completion => completion.date === dateStr && completion.completed
+      );
+      
+      if (isCompleted) {
+        streak++;
+      } else {
+        // 未完了の実行予定日が見つかったらストリーク終了
+        break;
+      }
+    }
     
-    if (diffDays === streak && completion.completed) {
-      streak++;
-      checkDate.setDate(checkDate.getDate() - 1);
-    } else {
+    // 前日に移動
+    checkDate.setDate(checkDate.getDate() - 1);
+    
+    // 過去90日までしか遡らない（無限ループ防止）
+    const daysDiff = Math.floor((today.getTime() - checkDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 90) {
       break;
     }
   }

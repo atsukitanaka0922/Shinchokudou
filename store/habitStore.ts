@@ -483,16 +483,15 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       HabitUtils.isCompletedToday(habit)
     ).length;
     
-    // 平均完了率を計算
+    // 平均完了率を計算（過去30日間）
     let totalCompletionRate = 0;
     let habitsWithHistory = 0;
     
-    habits.forEach(habit => {
-      if (habit.completionHistory.length > 0) {
-        const rate = HabitUtils.calculateCompletionRate(habit);
-        totalCompletionRate += rate;
-        habitsWithHistory++;
-      }
+    activeHabits.forEach(habit => {
+      // 過去30日間の完了率を計算
+      const rate = HabitUtils.calculateCompletionRate(habit, 30);
+      totalCompletionRate += rate;
+      habitsWithHistory++;
     });
     
     const averageCompletionRate = habitsWithHistory > 0 

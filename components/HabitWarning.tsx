@@ -35,9 +35,12 @@ export default function HabitWarning() {
     return () => clearInterval(interval);
   }, []);
 
-  // 習慣の警告チェック
+  // 習慣の警告チェック（リアルタイム）
   useEffect(() => {
-    if (!user || dismissed || habits.length === 0) return;
+    if (!user || dismissed) {
+      setShowWarning(false);
+      return;
+    }
     
     const now = new Date();
     const currentHour = now.getHours();
@@ -46,11 +49,19 @@ export default function HabitWarning() {
     // 20:00以降のみチェック
     if (currentHour < 20) {
       setShowWarning(false);
+      setOverdueHabits([]);
+      setIncompleteHabits([]);
+      return;
+    }
+    
+    if (habits.length === 0) {
+      setShowWarning(false);
+      setOverdueHabits([]);
+      setIncompleteHabits([]);
       return;
     }
     
     const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
     
     // 今日実行すべき習慣を取得
     const todayHabits = habits.filter(habit => 
@@ -83,11 +94,12 @@ export default function HabitWarning() {
       }
     });
     
+    // 状態を更新
     setOverdueHabits(overdueList);
     setIncompleteHabits(incompleteList);
     setShowWarning(overdueList.length > 0 || (currentHour >= 20 && incompleteList.length > 0));
     
-  }, [user, habits, dismissed, currentTime]);
+  }, [user, habits, dismissed, currentTime]); // currentTimeのみ依存関係として残す
 
   /**
    * 習慣を即座に完了させる
@@ -97,13 +109,40 @@ export default function HabitWarning() {
     if (!habit) return;
     
     try {
-      await markHabitComplete(habit.id);
-      
-      // リストから削除
+      // 即座にローカル状態を更新（オプティミスティック更新）
       setOverdueHabits(prev => prev.filter(title => title !== habitTitle));
       setIncompleteHabits(prev => prev.filter(title => title !== habitTitle));
+      
+      // Firestoreを更新
+      await markHabitComplete(habit.id);
+      
+      console.log(`習慣「${habitTitle}」を完了しました`);
     } catch (error) {
       console.error('習慣の即座完了に失敗:', error);
+      
+      // エラーの場合はローカル状態を元に戻す
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+      
+      if (HabitUtils.shouldExecuteToday(habit, today)) {
+        const currentTime = new Date();
+        const currentHour = currentTime.getHours();
+        const currentMinute = currentTime.getMinutes();
+        
+        if (habit.reminderTime) {
+          const [reminderHour, reminderMinute] = habit.reminderTime.split(':').map(Number);
+          const reminderTotalMinutes = reminderHour * 60 + reminderMinute;
+          const currentTotalMinutes = currentHour * 60 + currentMinute;
+          
+          if (currentTotalMinutes >= reminderTotalMinutes) {
+            setOverdueHabits(prev => [...prev, habitTitle]);
+          } else {
+            setIncompleteHabits(prev => [...prev, habitTitle]);
+          }
+        } else {
+          setIncompleteHabits(prev => [...prev, habitTitle]);
+        }
+      }
     }
   };
 
